@@ -737,17 +737,25 @@ function getMsalApp(config) {
   return _msalApp;
 }
 
+const isMobile   = () => /Mobi/i.test(navigator.userAgent);
+const PENDING_SK = 'ct_pending_send';
+
 async function getAccessToken(config) {
-  const app      = getMsalApp(config);
+  const app = getMsalApp(config);
+  try { await app.handleRedirectPromise(); } catch (_) {}
   const accounts = app.getAllAccounts();
   if (accounts.length > 0) {
     try {
-      const result = await app.acquireTokenSilent({ scopes: SP_SCOPES, account: accounts[0] });
-      return result.accessToken;
-    } catch (_) { /* cae a loginPopup si el token silencioso falla */ }
+      const r = await app.acquireTokenSilent({ scopes: SP_SCOPES, account: accounts[0] });
+      return r.accessToken;
+    } catch (_) {}
   }
-  const result = await app.loginPopup({ scopes: SP_SCOPES });
-  return result.accessToken;
+  if (isMobile()) {
+    await app.loginRedirect({ scopes: SP_SCOPES });
+    return null; // page navigates away
+  }
+  const r = await app.loginPopup({ scopes: SP_SCOPES });
+  return r.accessToken;
 }
 
 function getMsalAccount(config) {
@@ -799,17 +807,15 @@ const FOLDER_NAME = 'Consolidado.CT.2026';
 const FILE_URL    = `https://graph.microsoft.com/v1.0/me/drive/root:/${FOLDER_NAME}/Cierres_de_Turno.xlsx:/content`;
 const FOLDER_URL  = 'https://graph.microsoft.com/v1.0/me/drive/root/children';
 
-async function sendToSharePoint(record, config) {
-  const token   = await getAccessToken(config);
+// Núcleo del envío — recibe token ya obtenido
+async function sendToOneDrive(token, record) {
   const authHdr = { 'Authorization': `Bearer ${token}` };
 
-  // 1. Descargar archivo existente o crear nuevo
   let base64;
   const fileRes = await fetch(FILE_URL, { headers: authHdr });
   if (fileRes.ok) {
     base64 = await arrayBufferToBase64(await fileRes.arrayBuffer());
   } else if (fileRes.status === 404) {
-    // Crear la carpeta si no existe (ignorar error 409 = ya existe)
     await fetch(FOLDER_URL, {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -821,12 +827,10 @@ async function sendToSharePoint(record, config) {
     throw new Error(`Error descargando archivo (${fileRes.status}): ${err.error?.message || ''}`);
   }
 
-  // 2. Agregar fila a la hoja de la planta
   const sheetName = PLANT_LABELS[record.planta] || record.planta;
   const rowData   = { ...record, fechaHoraEnvio: new Date().toISOString() };
   const newBase64 = agregarFila(base64, sheetName, rowData);
 
-  // 3. Subir archivo actualizado
   const uploadRes = await fetch(FILE_URL, {
     method:  'PUT',
     headers: {
@@ -841,18 +845,50 @@ async function sendToSharePoint(record, config) {
   }
 }
 
+// Obtiene token + envía; en móvil sin sesión guarda en sessionStorage y redirige
+async function sendToSharePoint(record, config) {
+  const app = getMsalApp(config);
+  try { await app.handleRedirectPromise(); } catch (_) {}
+
+  let token;
+  const accounts = app.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const r = await app.acquireTokenSilent({ scopes: SP_SCOPES, account: accounts[0] });
+      token = r.accessToken;
+    } catch (_) {}
+  }
+
+  if (!token) {
+    if (isMobile()) {
+      sessionStorage.setItem(PENDING_SK, JSON.stringify({ record, config }));
+      await app.loginRedirect({ scopes: SP_SCOPES });
+      return; // page navigates away
+    }
+    const r = await app.loginPopup({ scopes: SP_SCOPES });
+    token = r.accessToken;
+  }
+
+  await sendToOneDrive(token, record);
+}
+
 const isConfigOk = cfg => !!(cfg?.tenantId?.trim() && cfg?.clientId?.trim());
 
 // ════════════════════════════════════════════════════════════════
 // COMPONENTES BASE DE FORMULARIO
 // ════════════════════════════════════════════════════════════════
 function Field({ name, label, hint, type='text', required=true, value, onChange, error, ...rest }) {
+  const { min, max, step, ...attrs } = rest;
+  const isNum = type === 'number';
   return (
     <div className={`field${error?' field-error':''}`}>
       <label htmlFor={name}>{label}{required&&<span className="req">*</span>}</label>
       {hint&&<span className="field-hint">{hint}</span>}
-      <input id={name} name={name} type={type} value={value} onChange={onChange}
-        inputMode={type==='number'?'decimal':undefined} autoComplete="off" {...rest}/>
+      <input id={name} name={name}
+        type={isNum ? 'text' : type}
+        inputMode={isNum ? 'numeric' : undefined}
+        value={value} onChange={onChange}
+        autoComplete="off" {...attrs}/>
       {error&&<span className="error-msg">{error}</span>}
     </div>
   );
@@ -974,6 +1010,17 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   const num = (name, label, useLast=false, extraProps={}) =>
     f(name, label, useLast?lastVal(name):null, 'number', {min:0, step:'0.1', ...extraProps});
 
+  // Horas fields: validate range in JS, no min/max HTML attrs, no auto-advance
+  const blockEnter = e => { if (e.key === 'Enter') e.preventDefault(); };
+  const handleHorasChange = e => {
+    const val = e.target.value;
+    if (val === '' || (Number(val) >= 0 && Number(val) <= 12)) {
+      handleChange(e);
+    }
+  };
+  const hf = (name, label) =>
+    f(name, label, 'Entre 0 y 12', 'number', {onKeyDown: blockEnter, onChange: handleHorasChange});
+
   const color     = PLANT_COLORS[plant] || '#1e3a5f';
   const sopOpts   = SOP_BY_PLANT[plant]   || SOP_OPTIONS;
   const turnoOpts = TURNO_BY_PLANT[plant] || TURNO_AB;
@@ -1015,8 +1062,8 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   const SecHoras = () => (
     <SecCard title="Horas">
       <div className="form-grid">
-        {f('horasProgramadas','Horas Programadas','Maximo 12','number',{min:0,max:12,step:'0.5'})}
-        {f('horasMantenimientoProgramado','Horas Mant. Programado','Entre 0 y 12','number',{min:0,max:12,step:'0.5'})}
+        {hf('horasProgramadas','Horas Programadas')}
+        {hf('horasMantenimientoProgramado','Horas Mant. Programado')}
       </div>
     </SecCard>
   );
@@ -1127,8 +1174,8 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         <div className="horno-divider">{label}</div>
         <SecCard title={`${label} — Horas`}>
           <div className="form-grid">
-            {f('horasProgramadas'+sfx,'Horas Programadas','Max 12','number',{min:0,max:12,step:'0.5'})}
-            {f('horasMantenimientoProgramado'+sfx,'Horas Mant. Programado','Entre 0 y 12','number',{min:0,max:12,step:'0.5'})}
+            {hf('horasProgramadas'+sfx,'Horas Programadas')}
+            {hf('horasMantenimientoProgramado'+sfx,'Horas Mant. Programado')}
           </div>
         </SecCard>
         <SecCard title={`${label} — Medidores`}>
@@ -1688,25 +1735,72 @@ function RecordCard({ record, onRefresh }) {
 }
 
 function History({ onBack, onOpenConfig }) {
-  const [filter, setFilter] = useState('all');
-  const [rev,    setRev]    = useState(0);
+  const [filter,  setFilter]  = useState('all');
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errMsg,  setErrMsg]  = useState(null);
+  const [source,  setSource]  = useState(null); // 'cloud' | 'local'
 
-  const allRecords = useMemo(
-    () => getRecords().sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro)),
-    [rev]
-  );
+  const config   = getConfig();
+  const configOk = isConfigOk(config);
+
+  const loadLocal = () => {
+    const local = getRecords().sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro));
+    setRecords(local); setSource('local'); setLoading(false);
+  };
+
+  const loadCloud = async () => {
+    setLoading(true); setErrMsg(null);
+    try {
+      const token = await getAccessToken(config);
+      if (!token) return; // mobile redirect in progress
+      const res = await fetch(FILE_URL, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.status === 404) { setRecords([]); setSource('cloud'); setLoading(false); return; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const b64 = await arrayBufferToBase64(await res.arrayBuffer());
+      const wb  = XLSX.read(b64, { type: 'base64' });
+      const all = [];
+      PLANTS.forEach(p => {
+        const ws = wb.Sheets[p.label];
+        if (!ws) return;
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        if (rows.length < 2) return;
+        const headers = rows[0];
+        rows.slice(1).forEach((row, ri) => {
+          const rec = {};
+          headers.forEach((h, i) => { if (h) rec[h] = row[i] ?? ''; });
+          rec.planta  = p.id;
+          rec.enviado = rec.enviado === 'true' || rec.enviado === true;
+          if (!rec.id) rec.id = `${p.id}_${ri}`;
+          all.push(rec);
+        });
+      });
+      all.sort((a,b) => new Date(b.fechaRegistro||0) - new Date(a.fechaRegistro||0));
+      setRecords(all); setSource('cloud');
+    } catch (err) {
+      setErrMsg(err.message);
+      loadLocal();
+      return;
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { configOk ? loadCloud() : loadLocal(); }, []);
+
   const filtered = useMemo(
-    () => filter==='all' ? allRecords : allRecords.filter(r=>r.planta===filter),
-    [allRecords, filter]
+    () => filter==='all' ? records : records.filter(r=>r.planta===filter),
+    [records, filter]
   );
-  const pending = allRecords.filter(r=>!r.enviado).length;
+  const pending = source==='local' ? records.filter(r=>!r.enviado).length : 0;
+
+  const sourceLabel = source==='cloud' ? '\u2601 OneDrive' : source==='local' ? '\uD83D\uDCBE Local' : '';
 
   return (
     <div className="page">
       <header className="form-header">
         <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
         <div className="form-header-title">
-          <span className="form-header-label">Historial</span>
+          <span className="form-header-label">Historial &nbsp;{sourceLabel}</span>
           <span className="form-header-plant">Registros guardados</span>
         </div>
         <div className="header-right">
@@ -1722,6 +1816,11 @@ function History({ onBack, onOpenConfig }) {
           &#9888; {pending} registro{pending!==1?'s':''} pendiente{pending!==1?'s':''} de envio a OneDrive.
         </div>
       )}
+      {errMsg&&(
+        <div className="warning-banner">
+          &#9888; No se pudo cargar desde OneDrive: {errMsg} &mdash; Mostrando registros locales.
+        </div>
+      )}
 
       <div className="filter-bar">
         {ALL_FILTERS.map(fi=>(
@@ -1732,17 +1831,32 @@ function History({ onBack, onOpenConfig }) {
       </div>
 
       <div className="history-toolbar">
-        <span className="history-count">{filtered.length} registro{filtered.length!==1?'s':''}</span>
+        <span className="history-count">
+          {loading ? 'Cargando...' : `${filtered.length} registro${filtered.length!==1?'s':''}`}
+        </span>
+        <button className="btn-action btn-history" type="button" disabled={loading}
+          onClick={configOk ? loadCloud : loadLocal}
+          style={{fontSize:'.75rem',padding:'.4rem .8rem'}}>
+          &#8635; Actualizar
+        </button>
         <button className="btn-action btn-export" onClick={()=>exportToCSV(filtered)} type="button">
-          &#11015; Exportar CSV
+          &#11015; CSV
         </button>
       </div>
 
       <div className="history-list">
-        {filtered.length===0
-          ? <div className="empty-state"><p>No hay registros para mostrar.</p></div>
-          : filtered.map(r=><RecordCard key={r.id} record={r} onRefresh={()=>setRev(v=>v+1)}/>)
-        }
+        {loading ? (
+          <div className="empty-state" style={{paddingTop:'3rem'}}>
+            <div className="spinner" style={{margin:'0 auto 1rem'}}/>
+            <p>Cargando historial desde OneDrive...</p>
+          </div>
+        ) : filtered.length===0 ? (
+          <div className="empty-state"><p>No hay registros para mostrar.</p></div>
+        ) : (
+          filtered.map(r=>(
+            <RecordCard key={r.id} record={r} onRefresh={configOk ? loadCloud : loadLocal}/>
+          ))
+        )}
       </div>
     </div>
   );
@@ -1877,6 +1991,31 @@ function App() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }, []);
+
+  // Recuperar envío pendiente al volver de loginRedirect en móvil
+  useEffect(() => {
+    const recover = async () => {
+      const raw = sessionStorage.getItem(PENDING_SK);
+      if (!raw) return;
+      let pending;
+      try { pending = JSON.parse(raw); } catch { sessionStorage.removeItem(PENDING_SK); return; }
+      const app = getMsalApp(pending.config);
+      try {
+        const result = await app.handleRedirectPromise();
+        if (!result?.accessToken) return; // no es un retorno de redirect
+        sessionStorage.removeItem(PENDING_SK);
+        await sendToOneDrive(result.accessToken, pending.record);
+        const ts = new Date().toISOString();
+        markAsSent(pending.record.id, ts);
+        showToast('\u2705 Enviado correctamente a OneDrive');
+      } catch (err) {
+        sessionStorage.removeItem(PENDING_SK);
+        if (pending?.record?.id) markAsError(pending.record.id, err.message);
+        showToast(`\u274c Error al enviar: ${err.message}`, 'error');
+      }
+    };
+    recover();
+  }, [showToast]);
 
   const navigate = useCallback(v => { setView(v); window.scrollTo(0,0); }, []);
 
