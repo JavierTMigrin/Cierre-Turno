@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Cierre de Turno — Operacion Minera</title>
+  <meta name="theme-color" content="#1e3a5f" />
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary:       #78cb79;
+      --primary-dark:  #5ab85b;
+      --primary-light: #9dd89e;
+      --primary-xlight:#e8f7e8;
+      --header-bg:     #1a1a1a;
+      --text:          #333333;
+      --text-secondary:#555555;
+      --text-muted:    #888888;
+      --bg:            #f5f5f5;
+      --card:          #ffffff;
+      --border:        #e0e0e0;
+      --border-light:  #eeeeee;
+      --error:         #c53030; --error-bg: #fff5f5; --error-border: #fc8181;
+      --success:       #276749; --success-bg: #f0fff4;
+      --warning:       #b7791f; --warning-bg: #fffff0; --warning-border: #f6e05e;
+      --radius:        12px;
+      --radius-sm:     8px;
+      --shadow:        0 2px 8px rgba(0,0,0,.07);
+      --shadow-md:     0 6px 24px rgba(0,0,0,.11);
+      --transition:    .2s ease;
+    }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.55; min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    button { font-family: inherit; }
+    input, select, textarea { font-family: inherit; font-size: 1rem; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%);
+      min-width: 280px; max-width: calc(100vw - 2rem);
+      padding: .875rem 1.5rem; border-radius: var(--radius);
+      font-weight: 600; font-size: .9rem; text-align: center;
+      z-index: 9999; box-shadow: var(--shadow-md); animation: toastIn .3s ease;
+    }
+    .toast-success { background: var(--primary-dark); color: #fff; }
+    .toast-error   { background: var(--error);         color: #fff; }
+    @keyframes toastIn {
+      from { transform: translateX(-50%) translateY(-14px); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0);      opacity: 1; }
+    }
+
+    /* ── Page ── */
+    .page { max-width: 860px; margin: 0 auto; padding-bottom: 5rem; }
+
+    /* ── Header fijo (formularios, historial, config) ── */
+    .form-header {
+      background: var(--header-bg); color: #fff;
+      display: flex; align-items: center; gap: .75rem;
+      padding: .875rem 1.1rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,.35);
+    }
+    .btn-back {
+      background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18);
+      color: #fff; cursor: pointer; font-size: .85rem; font-weight: 600;
+      padding: .4rem .85rem; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .btn-back:hover    { background: rgba(255,255,255,.22); }
+    .btn-back:disabled { opacity: .45; cursor: not-allowed; }
+    .form-header-title { display: flex; flex-direction: column; line-height: 1.25; flex: 1; min-width: 0; }
+    .form-header-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; opacity: .65; }
+    .form-header-plant { font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-right { margin-left: auto; flex-shrink: 0; }
+
+    /* ── Banners ── */
+    .last-record-banner { background: var(--primary-xlight); border-left: 4px solid var(--primary); color: #1a4731; padding: .65rem 1.1rem; font-size: .825rem; }
+    .warning-banner     { background: var(--warning-bg); border-left: 4px solid var(--warning); color: var(--warning); padding: .75rem 1.1rem; font-size: .85rem; }
+
+    /* ── Secciones de formulario ── */
+    .shift-form { padding: 0; }
+    .form-section { background: var(--card); margin: .875rem .875rem 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .section-header { background: var(--primary); color: #1a1a1a; padding: .5rem 1.1rem; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .section-body { padding: 1.1rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+    @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } .form-section { margin: .5rem .5rem 0; } }
+
+    /* ── Campos ── */
+    .field { display: flex; flex-direction: column; gap: .25rem; }
+    .field label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); }
+    .field.field-error label { color: var(--error); }
+    .field-hint { font-size: .7rem; color: var(--text-muted); font-style: italic; margin-top: -.1rem; }
+    .field input, .field select {
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: .6rem .85rem; font-size: .975rem; color: var(--text); background: #fff; width: 100%;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .field input:focus, .field select:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(120,203,121,.18);
+    }
+    .field.field-error input, .field.field-error select { border-color: var(--error-border); background: var(--error-bg); }
+    .req { color: var(--error); margin-left: 2px; }
+    .error-msg { font-size: .72rem; color: var(--error); font-weight: 600; }
+
+    /* ── Detenciones ── */
+    .detencion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+    @media (max-width: 600px) { .detencion-grid { grid-template-columns: 1fr; } }
+    .detencion-pair { background: var(--bg); border: 1.5px solid var(--border-light); border-radius: var(--radius-sm); padding: .9rem; display: flex; flex-direction: column; gap: .6rem; }
+    .detencion-pair-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--primary-dark); border-bottom: 1.5px solid var(--border); padding-bottom: .4rem; }
+
+    /* ── Separador de horno (Secado P) ── */
+    .horno-divider {
+      margin: 1.1rem .875rem 0; padding: .5rem 1.1rem;
+      background: var(--header-bg); color: #fff;
+      border-radius: var(--radius-sm); font-size: .78rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+
+    /* ── Error resumen ── */
+    .error-summary { margin: .875rem .875rem 0; padding: .75rem 1.1rem; background: var(--error-bg); border: 1.5px solid var(--error-border); border-radius: var(--radius); color: var(--error); font-size: .875rem; font-weight: 700; }
+
+    /* ── Acciones sticky ── */
+    .form-actions { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: .75rem; padding: .9rem .875rem; margin-top: .875rem; }
+    .btn-cancel {
+      background: var(--card); color: var(--text-secondary); border: 1.5px solid var(--border);
+      padding: .8rem 1.25rem; border-radius: var(--radius); font-size: .95rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: background var(--transition), border-color var(--transition);
+    }
+    .btn-cancel:hover { background: var(--bg); border-color: var(--primary); color: var(--primary-dark); }
+    .btn-save {
+      flex: 1; color: #fff; border: none; padding: .875rem 1.5rem;
+      border-radius: var(--radius); font-size: 1rem; font-weight: 700;
+      cursor: pointer; background: var(--primary);
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .btn-save:hover    { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(90,184,91,.35); }
+    .btn-save:active   { transform: none; box-shadow: none; }
+    .btn-save:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Pantalla de revisión ── */
+    .review-page { max-width: 860px; margin: 0 auto; padding-bottom: 5rem; }
+    .review-section { background: var(--card); margin: .875rem .875rem 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .review-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 480px) { .review-grid { grid-template-columns: 1fr; } }
+    .review-item { padding: .65rem .925rem; border-bottom: 1px solid var(--border-light); }
+    .review-item:last-child { border-bottom: none; }
+    .review-item:nth-child(odd)  { background: #fafafa; }
+    .review-item:nth-child(even) { background: #fff; }
+    .review-label { font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: .15rem; }
+    .review-value { font-size: .95rem; color: var(--text); font-weight: 500; }
+
+    /* ── Estado de envío ── */
+    .send-status-box { margin: .875rem .875rem 0; padding: 1rem 1.25rem; border-radius: var(--radius); display: flex; align-items: flex-start; gap: .875rem; }
+    .send-status-sending  { background: var(--primary-xlight); border: 1.5px solid var(--primary); color: #1a4731; }
+    .send-status-success  { background: var(--success-bg); border: 1.5px solid var(--success); color: var(--success); }
+    .send-status-error    { background: var(--error-bg); border: 1.5px solid var(--error-border); color: var(--error); }
+    .send-status-noconfig { background: var(--warning-bg); border: 1.5px solid var(--warning-border); color: var(--warning); }
+    .send-status-icon { font-size: 1.4rem; line-height: 1.2; flex-shrink: 0; }
+    .send-status-body { flex: 1; }
+    .send-status-title  { font-weight: 700; font-size: .95rem; margin-bottom: .2rem; }
+    .send-status-detail { font-size: .8rem; opacity: .9; line-height: 1.5; word-break: break-word; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 24px; height: 24px; border: 3px solid rgba(120,203,121,.25); border-top-color: var(--primary-dark); border-radius: 50%; animation: spin .75s linear infinite; flex-shrink: 0; margin-top: .1rem; }
+
+    /* ── Configuración ── */
+    .config-page { max-width: 860px; margin: 0 auto; padding-bottom: 3rem; }
+    .config-section { background: var(--card); margin: .875rem .875rem 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .config-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.1rem; }
+    .info-box { background: var(--primary-xlight); border: 1px solid var(--primary-light); border-radius: var(--radius-sm); padding: .9rem 1.1rem; font-size: .825rem; color: #1a4731; line-height: 1.65; }
+    .info-box strong { display: block; font-size: .875rem; margin-bottom: .35rem; color: #1a4731; }
+    .info-box ol, .info-box ul { padding-left: 1.25rem; margin-top: .3rem; }
+    .info-box li { margin-bottom: .3rem; }
+    .config-saved-ok { background: var(--success-bg); border: 1px solid var(--success); border-radius: var(--radius-sm); padding: .65rem 1rem; font-size: .875rem; color: var(--success); font-weight: 600; }
+    .config-test-result { font-size: .825rem; padding: .65rem .925rem; border-radius: var(--radius-sm); font-weight: 600; }
+    .config-test-ok  { background: var(--success-bg); color: var(--success); border: 1px solid #9ae6b4; }
+    .config-test-err { background: var(--error-bg);   color: var(--error);   border: 1px solid var(--error-border); }
+    .btn-test {
+      background: var(--header-bg); color: #fff; border: none;
+      padding: .75rem 1.25rem; border-radius: var(--radius); font-size: .9rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+      transition: background var(--transition), transform var(--transition);
+    }
+    .btn-test:hover    { background: #2d2d2d; transform: translateY(-1px); }
+    .btn-test:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    /* ── Home ── */
+    .home-page { min-height: 100vh; }
+    .home-header {
+      background: var(--header-bg); color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2rem 1.5rem 1.75rem; gap: .75rem;
+    }
+    .home-logo-img { max-height: 120px; width: auto; object-fit: contain; }
+
+    /* ── Modal de contraseña ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; padding: 1rem;
+    }
+    .modal-box {
+      background: var(--card); border-radius: var(--radius);
+      padding: 2rem; width: min(380px, 100%);
+      box-shadow: var(--shadow-md); animation: toastIn .2s ease;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: .6rem; }
+    .modal-sub   { font-size: .875rem; color: var(--text-secondary); margin-bottom: 1.4rem; line-height: 1.5; }
+    .home-header-divider { width: 1px; height: 40px; background: rgba(255,255,255,.15); display: none; }
+    .home-header-text { text-align: center; }
+    .home-header h1 { font-size: 1.35rem; font-weight: 800; margin-bottom: .2rem; letter-spacing: -.01em; color: #ffffff; }
+    .home-header p  { font-size: .85rem; color: rgba(255,255,255,.6); }
+    @media (min-width: 480px) {
+      .home-header { flex-direction: row; justify-content: center; gap: 1.25rem; padding: 1.5rem 2rem; }
+      .home-header-divider { display: block; }
+      .home-header-text { text-align: left; }
+    }
+    .home-content { padding: 1rem; max-width: 860px; margin: 0 auto; }
+    .home-actions { display: flex; gap: .5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .btn-action {
+      display: inline-flex; align-items: center; gap: .4rem; border: none;
+      padding: .6rem 1rem; border-radius: var(--radius); font-size: .825rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .btn-action:hover  { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-action:active { transform: none; box-shadow: none; }
+    .btn-history { background: #444; color: #fff; }
+    .btn-history:hover { background: #333; }
+    .btn-export  { background: var(--primary); color: #fff; }
+    .btn-export:hover  { background: var(--primary-dark); }
+    .btn-config  { background: var(--header-bg); color: #fff; }
+    .btn-config:hover  { background: #2d2d2d; }
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--text-muted); margin-bottom: .6rem; }
+    .plant-grid { display: flex; flex-direction: column; gap: .6rem; }
+    @media (min-width: 860px) { .home-content { padding: 1.5rem; } .plant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; } }
+    .plant-btn {
+      background: var(--card); border: none; border-left: 4px solid var(--primary);
+      border-radius: var(--radius); padding: .925rem 1rem;
+      display: flex; align-items: center; gap: .925rem;
+      cursor: pointer; box-shadow: var(--shadow); text-align: left; width: 100%;
+      transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    }
+    .plant-btn:hover  { transform: translateY(-2px); box-shadow: var(--shadow-md); border-left-color: var(--primary-dark); }
+    .plant-btn:active { transform: none; box-shadow: var(--shadow); }
+    .plant-avatar { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85rem; font-weight: 800; flex-shrink: 0; }
+    .plant-info   { flex: 1; display: flex; flex-direction: column; gap: .15rem; }
+    .plant-name   { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .plant-meta   { font-size: .775rem; color: var(--text-muted); }
+    .plant-arrow  { color: var(--primary); font-size: 1.5rem; flex-shrink: 0; font-weight: 700; }
+    .home-total   { text-align: center; margin-top: 1.25rem; font-size: .8rem; color: var(--text-muted); }
+    .cloud-badge  { display: inline-flex; align-items: center; gap: .3rem; font-size: .7rem; font-weight: 700; background: var(--primary-xlight); color: var(--primary-dark); border: 1px solid var(--primary-light); border-radius: 20px; padding: .2rem .6rem; }
+    .cloud-badge-off { background: var(--warning-bg); color: var(--warning); border-color: var(--warning-border); }
+
+    /* ── Historial ── */
+    .filter-bar { display: flex; gap: .4rem; padding: .875rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      white-space: nowrap; padding: .4rem .9rem; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--card);
+      font-size: .8rem; font-weight: 600; cursor: pointer; color: var(--text-secondary);
+      flex-shrink: 0; transition: all var(--transition);
+    }
+    .filter-btn:hover  { border-color: var(--primary); color: var(--primary-dark); }
+    .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .history-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 0 .875rem .5rem; gap: .5rem; }
+    .history-count { font-size: .825rem; color: var(--text-muted); }
+    .history-list  { padding: 0 .875rem; display: flex; flex-direction: column; gap: .55rem; }
+
+    /* ── Tarjeta de registro ── */
+    .record-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; border-left: 4px solid var(--primary); transition: box-shadow var(--transition); }
+    .record-card:hover { box-shadow: var(--shadow-md); }
+    .record-card-header { width: 100%; background: none; border: none; padding: .9rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; text-align: left; transition: background var(--transition); }
+    .record-card-header:hover { background: #fafafa; }
+    .record-card-left  { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+    .record-plant-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .record-plant-name { display: block; font-size: .95rem; font-weight: 700; }
+    .record-meta       { display: block; font-size: .775rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .record-card-right { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+    .expand-icon { font-size: .65rem; color: var(--text-muted); margin-left: .1rem; }
+    .badge { font-size: .68rem; font-weight: 700; padding: .2rem .55rem; border-radius: 20px; white-space: nowrap; }
+    .badge-review  { background: #fef9c3; color: #854d0e; }
+    .badge-closed  { background: var(--primary-xlight); color: var(--primary-dark); }
+    .badge-sent    { background: var(--success-bg); color: var(--success); }
+    .badge-error   { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+    .badge-pending { background: #f3f4f6; color: var(--text-muted); border: 1px solid var(--border); }
+    .record-detail { border-top: 1px solid var(--border-light); padding: .925rem; background: #fafafa; }
+    .record-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem; }
+    @media (min-width: 600px) { .record-detail-grid { grid-template-columns: repeat(3, 1fr); } }
+    .detail-item  { display: flex; flex-direction: column; gap: .1rem; }
+    .detail-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .detail-value { font-size: .875rem; color: var(--text); font-weight: 500; word-break: break-word; }
+    .detail-footer { margin-top: .75rem; padding-top: .5rem; border-top: 1px solid var(--border-light); font-size: .72rem; }
+    .detail-footer.sent    { color: var(--success); font-weight: 600; }
+    .detail-footer.pending { color: var(--text-muted); }
+    .detail-error-box { margin-top: .75rem; padding: .65rem .925rem; background: var(--error-bg); border-radius: var(--radius-sm); border: 1px solid var(--error-border); font-size: .8rem; color: var(--error); }
+    .btn-retry {
+      margin-top: .5rem; background: var(--primary); color: #fff; border: none;
+      padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 700;
+      cursor: pointer; transition: background var(--transition), transform var(--transition);
+    }
+    .btn-retry:hover    { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-retry:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .immutable-badge { margin-top: .5rem; font-size: .75rem; color: var(--success); font-weight: 600; }
+
+    /* ── Estado vacío ── */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .empty-state p { margin-bottom: .4rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ════════════════════════════════════════════════════════════════
+// CONSTANTES
+// ════════════════════════════════════════════════════════════════
+const PLANTS = [
+  { id:'arenas',  label:'Arenas',   color:'#1e3a5f', abbr:'AR' },
+  { id:'cuarzo',  label:'Cuarzo',   color:'#2563a8', abbr:'CZ' },
+  { id:'lavadoP', label:'Lavado P', color:'#276749', abbr:'LP' },
+  { id:'secadoP', label:'Secado P', color:'#553c9a', abbr:'SP' },
+  { id:'lavadoT', label:'Lavado T', color:'#c05621', abbr:'LT' },
+  { id:'secadoT', label:'Secado T', color:'#97266d', abbr:'ST' },
+];
+const PLANT_LABELS = Object.fromEntries(PLANTS.map(p => [p.id, p.label]));
+const PLANT_COLORS = Object.fromEntries(PLANTS.map(p => [p.id, p.color]));
+
+const SOP_OPTIONS  = ['Alejandro Jofre','Cristian Ayala','Jorge Hernandez','Diego Aguilera','Nicolas Merino','Benjamin Veliz'];
+const SOP_PLANTAS  = ['Cristian Ayala','Jorge Hernandez','Fabian Guzman','Jorge Viertel','Juan Gonzalez','Francisco Eyzaguirre','Claudio Matta','Daniel Mendoza'];
+const TURNO_AB     = ['A','B'];
+const TURNO_ABC    = ['A','B','C'];
+const ESTADO_OPTIONS = ['En revision','Cerrado'];
+const SILO_OPTIONS = ['0.25','0.5','0.75','1','1.25','1.5','1.75','2','2.25','2.5'];
+
+const MAT_BY_PLANT = {
+  arenas:  ['A36','Alta Hierro','Producto Especial'],
+  cuarzo:  ['A-37','Compacta VSI'],
+  lavadoP: ['A25','A34/A24','A26','A45','Esteril','Granos'],
+  secadoP: null,
+  lavadoT: ['TLH','Esteril'],
+  secadoT: null,
+};
+const TURNO_BY_PLANT = {
+  arenas: TURNO_AB, cuarzo: TURNO_AB,
+  lavadoP: TURNO_ABC, secadoP: TURNO_ABC, lavadoT: TURNO_ABC, secadoT: TURNO_ABC,
+};
+const SOP_BY_PLANT = {
+  arenas: SOP_OPTIONS, cuarzo: SOP_OPTIONS,
+  lavadoP: SOP_PLANTAS, secadoP: SOP_PLANTAS, lavadoT: SOP_PLANTAS, secadoT: SOP_PLANTAS,
+};
+
+const FIELD_LABELS = {
+  fecha:'Fecha', turno:'Turno', sop:'SOP', tipoMaterial:'Tipo Material',
+  horasProgramadas:'Horas Programadas', horasMantenimientoProgramado:'Horas Mant. Programado',
+  horometroPlanta:'Horometro Planta', pesometroAlimentacion:'Pesometro Alimentacion',
+  litrosPetroleo:'Litros de Petroleo', horometroGenerador:'Horometro Generador',
+  kilosFloculante:'Kilos de Floculante', bolsasFloculante:'Bolsas de Floculante',
+  consumoElectricoKW:'Consumo Electrico (kW)', consumoGas:'Consumo Gas', consumoElectrico:'Consumo Electrico',
+  odometroPetroleo:'Odometro Petroleo',
+  detencionOperacion1:'Detencion Op.1', tiempoDetencionOperacion1:'Tiempo Det.Op.1 (min)',
+  detencionOperacion2:'Detencion Op.2', tiempoDetencionOperacion2:'Tiempo Det.Op.2 (min)',
+  detencionMantencion1:'Detencion Mant.1', tiempoDetencionMantencion1:'Tiempo Det.Mant.1 (min)',
+  detencionMantencion2:'Detencion Mant.2', tiempoDetencionMantencion2:'Tiempo Det.Mant.2 (min)',
+  pesometroProduccion:'Pesometro Produccion', numeroBolasM1:'N\u00b0 Bolas M1',
+  numeroBolasM2:'N\u00b0 Bolas M2', flujo:'Flujo (Ton/h)',
+  pesometroProduccionCuarzo:'Pesometro Prod.Cuarzo', pesometroProduccionCompacta:'Pesometro Prod.Compacta',
+  horometroVSI:'Horometro VSI', litrosPetroleoVSI:'Litros Petroleo VSI',
+  // Secado P — Horno A
+  horasProgramadasA:'Horas Programadas H.A', horasMantenimientoProgramadoA:'Horas Mant. Prog. H.A',
+  horometroPlantaA:'Horometro Planta H.A', pesometroAlimentacionA:'Pesometro Alim. H.A',
+  pesometroProduccionA:'Pesometro Prod. H.A', consumoGasA:'Consumo Gas H.A',
+  detencionOperacion1A:'Det. Op. 1 H.A', tiempoDetencionOperacion1A:'Tiempo Det.Op.1 H.A (min)',
+  detencionOperacion2A:'Det. Op. 2 H.A', tiempoDetencionOperacion2A:'Tiempo Det.Op.2 H.A (min)',
+  detencionMantencion1A:'Det. Mant. 1 H.A', tiempoDetencionMantencion1A:'Tiempo Det.Mant.1 H.A (min)',
+  detencionMantencion2A:'Det. Mant. 2 H.A', tiempoDetencionMantencion2A:'Tiempo Det.Mant.2 H.A (min)',
+  // Secado P — Horno B
+  horasProgramadasB:'Horas Programadas H.B', horasMantenimientoProgramadoB:'Horas Mant. Prog. H.B',
+  horometroPlantaB:'Horometro Planta H.B', pesometroAlimentacionB:'Pesometro Alim. H.B',
+  pesometroProduccionB:'Pesometro Prod. H.B', consumoGasB:'Consumo Gas H.B',
+  detencionOperacion1B:'Det. Op. 1 H.B', tiempoDetencionOperacion1B:'Tiempo Det.Op.1 H.B (min)',
+  detencionOperacion2B:'Det. Op. 2 H.B', tiempoDetencionOperacion2B:'Tiempo Det.Op.2 H.B (min)',
+  detencionMantencion1B:'Det. Mant. 1 H.B', tiempoDetencionMantencion1B:'Tiempo Det.Mant.1 H.B (min)',
+  detencionMantencion2B:'Det. Mant. 2 H.B', tiempoDetencionMantencion2B:'Tiempo Det.Mant.2 H.B (min)',
+  // Secado P — silos
+  silo1:'Silo 1', silo2:'Silo 2', silo3:'Silo 3', silo4:'Silo 4', silo5:'Silo 5', silo6:'Silo 6',
+  // Secado T
+  horometroIman:'Horometro Iman', pesometroIman:'Pesometro Iman',
+  horometroInicialFierrillo:'Horometro Inicial Fierrillo', horometroFinalFierrillo:'Horometro Final Fierrillo',
+  pesometroInicialFierrillo:'Pesometro Inicial Fierrillo', pesometroFinalFierrillo:'Pesometro Final Fierrillo',
+  estado:'Estado', creadoPor:'Creado Por',
+};
+
+// Secciones para pantalla de revisión (por planta)
+const getReviewSections = plant => {
+  const base  = [{ title:'Informacion General', fields:['fecha','turno','sop','tipoMaterial'] }];
+  const horas = { title:'Horas', fields:['horasProgramadas','horasMantenimientoProgramado'] };
+  const detOp  = { title:'Detenciones Operacionales', fields:['detencionOperacion1','tiempoDetencionOperacion1','detencionOperacion2','tiempoDetencionOperacion2'] };
+  const detMnt = { title:'Detenciones de Mantencion',  fields:['detencionMantencion1','tiempoDetencionMantencion1','detencionMantencion2','tiempoDetencionMantencion2'] };
+  const end   = [{ title:'Estado del Registro', fields:['estado','creadoPor'] }];
+
+  if (plant === 'arenas') return [
+    ...base, horas,
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','kilosFloculante'] },
+    { title:'Produccion',       fields:['pesometroProduccion','flujo','numeroBolasM1','numeroBolasM2'] },
+    detOp, detMnt, ...end,
+  ];
+  if (plant === 'cuarzo') return [
+    ...base, horas,
+    { title:'Medidores Planta',  fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','kilosFloculante','horometroVSI','litrosPetroleoVSI','odometroPetroleo'] },
+    { title:'Produccion Cuarzo', fields:['pesometroProduccionCuarzo','pesometroProduccionCompacta'] },
+    detOp, detMnt, ...end,
+  ];
+  if (plant === 'lavadoP') return [
+    ...base, horas,
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','bolsasFloculante','consumoElectricoKW'] },
+    detOp, detMnt, ...end,
+  ];
+  if (plant === 'secadoP') return [
+    { title:'Informacion General',  fields:['fecha','turno','sop'] },
+    { title:'Horno A — Horas',      fields:['horasProgramadasA','horasMantenimientoProgramadoA'] },
+    { title:'Horno A — Medidores',  fields:['horometroPlantaA','pesometroAlimentacionA'] },
+    { title:'Horno A — Produccion', fields:['pesometroProduccionA','consumoGasA'] },
+    { title:'Horno A — Det. Op.',   fields:['detencionOperacion1A','tiempoDetencionOperacion1A','detencionOperacion2A','tiempoDetencionOperacion2A'] },
+    { title:'Horno A — Det. Mant.', fields:['detencionMantencion1A','tiempoDetencionMantencion1A','detencionMantencion2A','tiempoDetencionMantencion2A'] },
+    { title:'Horno B — Horas',      fields:['horasProgramadasB','horasMantenimientoProgramadoB'] },
+    { title:'Horno B — Medidores',  fields:['horometroPlantaB','pesometroAlimentacionB'] },
+    { title:'Horno B — Produccion', fields:['pesometroProduccionB','consumoGasB'] },
+    { title:'Horno B — Det. Op.',   fields:['detencionOperacion1B','tiempoDetencionOperacion1B','detencionOperacion2B','tiempoDetencionOperacion2B'] },
+    { title:'Horno B — Det. Mant.', fields:['detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B'] },
+    { title:'Silos',             fields:['silo1','silo2','silo3','silo4','silo5','silo6'] },
+    { title:'Consumo Electrico', fields:['consumoElectricoKW'] },
+    ...end,
+  ];
+  if (plant === 'lavadoT') return [
+    ...base, horas,
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','kilosFloculante','consumoElectricoKW'] },
+    { title:'Produccion',       fields:['pesometroProduccion','flujo'] },
+    detOp, detMnt, ...end,
+  ];
+  if (plant === 'secadoT') return [
+    { title:'Informacion General', fields:['fecha','turno','sop'] },
+    horas,
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','consumoGas','consumoElectrico'] },
+    { title:'Iman',      fields:['horometroIman','pesometroIman'] },
+    { title:'Fierrillo', fields:['horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo'] },
+    detOp, detMnt, ...end,
+  ];
+  return [...base, horas, detOp, detMnt, ...end];
+};
+
+// Columnas del Excel (en orden)
+const EXCEL_COLS = [
+  'planta','fecha','turno','sop','tipoMaterial',
+  'horasProgramadas','horasMantenimientoProgramado',
+  'horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador',
+  'kilosFloculante','bolsasFloculante','consumoElectricoKW','consumoGas','consumoElectrico',
+  'odometroPetroleo',
+  'detencionOperacion1','tiempoDetencionOperacion1',
+  'detencionOperacion2','tiempoDetencionOperacion2',
+  'detencionMantencion1','tiempoDetencionMantencion1',
+  'detencionMantencion2','tiempoDetencionMantencion2',
+  'pesometroProduccion','numeroBolasM1','numeroBolasM2','flujo',
+  'pesometroProduccionCuarzo','pesometroProduccionCompacta','horometroVSI','litrosPetroleoVSI',
+  'horasProgramadasA','horasMantenimientoProgramadoA','horometroPlantaA','pesometroAlimentacionA',
+  'pesometroProduccionA','consumoGasA',
+  'detencionOperacion1A','tiempoDetencionOperacion1A','detencionOperacion2A','tiempoDetencionOperacion2A',
+  'detencionMantencion1A','tiempoDetencionMantencion1A','detencionMantencion2A','tiempoDetencionMantencion2A',
+  'horasProgramadasB','horasMantenimientoProgramadoB','horometroPlantaB','pesometroAlimentacionB',
+  'pesometroProduccionB','consumoGasB',
+  'detencionOperacion1B','tiempoDetencionOperacion1B','detencionOperacion2B','tiempoDetencionOperacion2B',
+  'detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B',
+  'silo1','silo2','silo3','silo4','silo5','silo6',
+  'horometroIman','pesometroIman',
+  'horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo',
+  'estado','creadoPor','fechaRegistro','fechaHoraEnvio',
+];
+
+// Configuracion predeterminada OneDrive
+const DEFAULT_SP_CONFIG = {
+  tenantId: 'b82f992b-02a3-48f7-92c0-5c5bc836cde2',
+  clientId: '1acc4905-4dc2-4bb0-b17c-1738c87f17b1',
+};
+
+// ════════════════════════════════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════════════════════════════════
+const SK = 'ct_registros_turno';
+const CK = 'ct_config_sp';
+
+const getRecords   = () => { try { return JSON.parse(localStorage.getItem(SK)||'[]'); } catch { return []; } };
+const getConfig    = () => { try { return JSON.parse(localStorage.getItem(CK)||'null') || { ...DEFAULT_SP_CONFIG }; } catch { return { ...DEFAULT_SP_CONFIG }; } };
+const saveConfig   = c  => localStorage.setItem(CK, JSON.stringify(c));
+
+const saveRecord = record => {
+  const all = getRecords();
+  const nr = { enviado:false, ...record, id:`${Date.now()}_${Math.random().toString(36).slice(2,9)}`, fechaRegistro:new Date().toISOString() };
+  all.push(nr);
+  localStorage.setItem(SK, JSON.stringify(all));
+  return nr;
+};
+const updateRecord = (id, patch) => {
+  const all = getRecords();
+  const i = all.findIndex(r => r.id === id);
+  if (i === -1) return null;
+  all[i] = { ...all[i], ...patch };
+  localStorage.setItem(SK, JSON.stringify(all));
+  return all[i];
+};
+const markAsSent  = (id, ts)  => updateRecord(id, { enviado:true,  fechaHoraEnvio:ts, errorEnvio:null });
+const markAsError = (id, msg) => updateRecord(id, { enviado:false, errorEnvio:msg });
+
+const getLastRecord = plant => {
+  const all = getRecords().filter(r => r.planta===plant)
+    .sort((a,b) => new Date(b.fechaRegistro)-new Date(a.fechaRegistro));
+  return all[0] || null;
+};
+
+// ════════════════════════════════════════════════════════════════
+// CSV EXPORT
+// ════════════════════════════════════════════════════════════════
+const CSV_COLS   = [...EXCEL_COLS, 'enviado','id'];
+const CSV_LABELS = { ...Object.fromEntries(Object.entries(FIELD_LABELS)), planta:'Planta', fechaRegistro:'Fecha Registro', fechaHoraEnvio:'Fecha/Hora Envio', enviado:'Enviado a la nube', id:'ID' };
+
+const exportToCSV = records => {
+  if (!records?.length) { alert('No hay registros para exportar.'); return; }
+  const hdr  = CSV_COLS.map(k => CSV_LABELS[k]||k).join(';');
+  const rows = records.map(r => CSV_COLS.map(k => `"${String(r[k]??'').replace(/"/g,'""')}"`).join(';'));
+  const blob = new Blob(['\uFEFF'+[hdr,...rows].join('\r\n')], { type:'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`registros_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+};
+
+// ════════════════════════════════════════════════════════════════
+// VALIDACIÓN
+// ════════════════════════════════════════════════════════════════
+const isNum = v => v!==''&&v!==null&&v!==undefined&&!isNaN(Number(v));
+
+const getInitialState = plant => {
+  const today = new Date().toISOString().slice(0,10);
+  const base  = { fecha:today, turno:'', sop:'', estado:'En revision', creadoPor:'' };
+  const det2  = {
+    detencionOperacion1:'', tiempoDetencionOperacion1:'',
+    detencionOperacion2:'', tiempoDetencionOperacion2:'',
+    detencionMantencion1:'', tiempoDetencionMantencion1:'',
+    detencionMantencion2:'', tiempoDetencionMantencion2:'',
+  };
+  const horas = { horasProgramadas:'', horasMantenimientoProgramado:'' };
+
+  if (plant === 'arenas') return { ...base, tipoMaterial:'', ...horas,
+    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', kilosFloculante:'',
+    pesometroProduccion:'', flujo:'', numeroBolasM1:'', numeroBolasM2:'', ...det2 };
+  if (plant === 'cuarzo') return { ...base, tipoMaterial:'', ...horas,
+    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', kilosFloculante:'',
+    horometroVSI:'', litrosPetroleoVSI:'', odometroPetroleo:'',
+    pesometroProduccionCuarzo:'', pesometroProduccionCompacta:'', ...det2 };
+  if (plant === 'lavadoP') return { ...base, tipoMaterial:'', ...horas,
+    horometroPlanta:'', pesometroAlimentacion:'', bolsasFloculante:'', consumoElectricoKW:'', ...det2 };
+  if (plant === 'secadoP') return { ...base,
+    horasProgramadasA:'', horasMantenimientoProgramadoA:'',
+    horometroPlantaA:'', pesometroAlimentacionA:'',
+    pesometroProduccionA:'', consumoGasA:'',
+    detencionOperacion1A:'', tiempoDetencionOperacion1A:'',
+    detencionOperacion2A:'', tiempoDetencionOperacion2A:'',
+    detencionMantencion1A:'', tiempoDetencionMantencion1A:'',
+    detencionMantencion2A:'', tiempoDetencionMantencion2A:'',
+    horasProgramadasB:'', horasMantenimientoProgramadoB:'',
+    horometroPlantaB:'', pesometroAlimentacionB:'',
+    pesometroProduccionB:'', consumoGasB:'',
+    detencionOperacion1B:'', tiempoDetencionOperacion1B:'',
+    detencionOperacion2B:'', tiempoDetencionOperacion2B:'',
+    detencionMantencion1B:'', tiempoDetencionMantencion1B:'',
+    detencionMantencion2B:'', tiempoDetencionMantencion2B:'',
+    silo1:'', silo2:'', silo3:'', silo4:'', silo5:'', silo6:'',
+    consumoElectricoKW:'',
+  };
+  if (plant === 'lavadoT') return { ...base, tipoMaterial:'', ...horas,
+    horometroPlanta:'', pesometroAlimentacion:'', kilosFloculante:'', consumoElectricoKW:'',
+    pesometroProduccion:'', flujo:'', ...det2 };
+  if (plant === 'secadoT') return { ...base, ...horas,
+    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', consumoGas:'', consumoElectrico:'',
+    horometroIman:'', pesometroIman:'',
+    horometroInicialFierrillo:'', horometroFinalFierrillo:'', pesometroInicialFierrillo:'', pesometroFinalFierrillo:'',
+    ...det2 };
+  return { ...base, tipoMaterial:'', ...horas, ...det2 };
+};
+
+const validate = (data, plant, lr) => {
+  const e = {};
+  if (!data.fecha) e.fecha='La fecha es obligatoria';
+  if (!data.turno) e.turno='Seleccione un turno';
+  if (!data.sop)   e.sop='Seleccione el SOP';
+  if (!data.creadoPor?.trim()) e.creadoPor='Ingrese el nombre del operador';
+  if (MAT_BY_PLANT[plant] !== null && !data.tipoMaterial) e.tipoMaterial='Seleccione el tipo de material';
+
+  const numReq = (field, label) => { if (!isNum(data[field])) e[field]=`Ingrese ${label}`; };
+  const mono = (field, label) => {
+    if (!isNum(data[field])) { e[field]=`Ingrese ${label}`; return; }
+    if (lr&&lr[field]!==undefined&&lr[field]!==''&&isNum(lr[field])&&Number(data[field])<Number(lr[field]))
+      e[field]=`No puede ser menor al ultimo registro: ${lr[field]}`;
+  };
+  const horasF = (field, label) => {
+    if (!isNum(data[field])) e[field]=`Ingrese ${label}`;
+    else if (Number(data[field])<0||Number(data[field])>12) e[field]='Debe estar entre 0 y 12';
+  };
+  const detPairs = (sfx='') => {
+    [['detencionOperacion1','tiempoDetencionOperacion1'],
+     ['detencionOperacion2','tiempoDetencionOperacion2'],
+     ['detencionMantencion1','tiempoDetencionMantencion1'],
+     ['detencionMantencion2','tiempoDetencionMantencion2'],
+    ].forEach(([d,t]) => {
+      if (!data[d+sfx]?.trim()) e[d+sfx]='Describa la detencion';
+      if (!isNum(data[t+sfx])) e[t+sfx]='Ingrese el tiempo (min)';
+    });
+  };
+
+  if (plant === 'arenas') {
+    horasF('horasProgramadas','las horas programadas');
+    horasF('horasMantenimientoProgramado','las horas de mantenimiento');
+    mono('horometroPlanta','el horometro de planta');
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    numReq('litrosPetroleo','los litros de petroleo');
+    mono('horometroGenerador','el horometro de generador');
+    numReq('kilosFloculante','los kilos de floculante');
+    mono('pesometroProduccion','el pesometro de produccion');
+    numReq('flujo','el flujo');
+    numReq('numeroBolasM1','el numero de bolas M1');
+    numReq('numeroBolasM2','el numero de bolas M2');
+    detPairs();
+  } else if (plant === 'cuarzo') {
+    horasF('horasProgramadas','las horas programadas');
+    horasF('horasMantenimientoProgramado','las horas de mantenimiento');
+    mono('horometroPlanta','el horometro de planta');
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    numReq('litrosPetroleo','los litros de petroleo');
+    mono('horometroGenerador','el horometro de generador');
+    numReq('kilosFloculante','los kilos de floculante');
+    mono('horometroVSI','el horometro VSI');
+    numReq('litrosPetroleoVSI','los litros de petroleo VSI');
+    numReq('odometroPetroleo','el odometro de petroleo');
+    mono('pesometroProduccionCuarzo','el pesometro de produccion cuarzo');
+    if (data.pesometroProduccionCompacta!==''&&data.pesometroProduccionCompacta!=null) {
+      if (!isNum(data.pesometroProduccionCompacta)) e.pesometroProduccionCompacta='Debe ser un numero valido';
+      else if (lr?.pesometroProduccionCompacta&&isNum(lr.pesometroProduccionCompacta)&&Number(data.pesometroProduccionCompacta)<Number(lr.pesometroProduccionCompacta))
+        e.pesometroProduccionCompacta=`No puede ser menor al ultimo registro: ${lr.pesometroProduccionCompacta}`;
+    }
+    detPairs();
+  } else if (plant === 'lavadoP') {
+    horasF('horasProgramadas','las horas programadas');
+    horasF('horasMantenimientoProgramado','las horas de mantenimiento');
+    mono('horometroPlanta','el horometro de planta');
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    numReq('bolsasFloculante','las bolsas de floculante');
+    numReq('consumoElectricoKW','el consumo electrico');
+    detPairs();
+  } else if (plant === 'secadoP') {
+    ['A','B'].forEach(sfx => {
+      horasF('horasProgramadas'+sfx,'las horas programadas horno '+sfx);
+      horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
+      mono('horometroPlanta'+sfx,'el horometro de planta horno '+sfx);
+      mono('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx);
+      mono('pesometroProduccion'+sfx,'el pesometro de produccion horno '+sfx);
+      numReq('consumoGas'+sfx,'el consumo de gas horno '+sfx);
+      detPairs(sfx);
+    });
+    numReq('consumoElectricoKW','el consumo electrico');
+  } else if (plant === 'lavadoT') {
+    horasF('horasProgramadas','las horas programadas');
+    horasF('horasMantenimientoProgramado','las horas de mantenimiento');
+    mono('horometroPlanta','el horometro de planta');
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    numReq('kilosFloculante','los kilos de floculante');
+    numReq('consumoElectricoKW','el consumo electrico');
+    mono('pesometroProduccion','el pesometro de produccion');
+    numReq('flujo','el flujo');
+    detPairs();
+  } else if (plant === 'secadoT') {
+    horasF('horasProgramadas','las horas programadas');
+    horasF('horasMantenimientoProgramado','las horas de mantenimiento');
+    mono('horometroPlanta','el horometro de planta');
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    numReq('litrosPetroleo','los litros de petroleo');
+    mono('horometroGenerador','el horometro de generador');
+    numReq('consumoGas','el consumo de gas');
+    numReq('consumoElectrico','el consumo electrico');
+    mono('horometroIman','el horometro iman');
+    mono('pesometroIman','el pesometro iman');
+    numReq('horometroInicialFierrillo','el horometro inicial fierrillo');
+    numReq('horometroFinalFierrillo','el horometro final fierrillo');
+    numReq('pesometroInicialFierrillo','el pesometro inicial fierrillo');
+    numReq('pesometroFinalFierrillo','el pesometro final fierrillo');
+    detPairs();
+  }
+  return e;
+};
+
+// ════════════════════════════════════════════════════════════════
+// SHAREPOINT / MICROSOFT GRAPH API — MSAL delegated flow
+// ════════════════════════════════════════════════════════════════
+const SP_SCOPES = ['User.Read', 'Files.ReadWrite'];
+
+let _msalApp    = null;
+let _msalCfgKey = '';
+
+function getMsalApp(config) {
+  const key = `${config.tenantId}|${config.clientId}`;
+  if (_msalApp && _msalCfgKey === key) return _msalApp;
+  const MsalLib = window.msal;
+  if (!MsalLib || !MsalLib.PublicClientApplication)
+    throw new Error('MSAL no cargado. Verifique su conexion a internet y recargue la pagina.');
+  _msalApp = new MsalLib.PublicClientApplication({
+    auth: {
+      clientId:    config.clientId,
+      authority:   `https://login.microsoftonline.com/${config.tenantId}`,
+      redirectUri: window.location.href.split(/[?#]/)[0],
+    },
+    cache: {
+      cacheLocation:       'localStorage',
+      storeAuthStateInCookie: false,
+    },
+  });
+  _msalCfgKey = key;
+  return _msalApp;
+}
+
+async function getAccessToken(config) {
+  const app      = getMsalApp(config);
+  const accounts = app.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const result = await app.acquireTokenSilent({ scopes: SP_SCOPES, account: accounts[0] });
+      return result.accessToken;
+    } catch (_) { /* cae a loginPopup si el token silencioso falla */ }
+  }
+  const result = await app.loginPopup({ scopes: SP_SCOPES });
+  return result.accessToken;
+}
+
+function getMsalAccount(config) {
+  try { return getMsalApp(config).getAllAccounts()[0] || null; }
+  catch { return null; }
+}
+
+async function msalLogout(config) {
+  const app     = getMsalApp(config);
+  const account = app.getAllAccounts()[0];
+  if (account) await app.logoutPopup({ account });
+}
+
+function crearLibroNuevo() {
+  const wb = XLSX.utils.book_new();
+  PLANTS.forEach(p => {
+    const ws = XLSX.utils.aoa_to_sheet([EXCEL_COLS]);
+    XLSX.utils.book_append_sheet(wb, ws, p.label);
+  });
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+}
+
+function agregarFila(base64, sheetName, rowData) {
+  const wb = XLSX.read(base64, { type: 'base64' });
+  let ws = wb.Sheets[sheetName];
+  if (!ws) {
+    ws = XLSX.utils.aoa_to_sheet([EXCEL_COLS]);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+  XLSX.utils.sheet_add_aoa(ws, [EXCEL_COLS.map(k => String(rowData[k] ?? ''))], { origin: -1 });
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+}
+
+function base64ToUint8Array(b64) {
+  const binary = atob(b64);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return arr;
+}
+
+async function arrayBufferToBase64(buf) {
+  const uint8 = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+  return btoa(binary);
+}
+
+const FOLDER_NAME = 'Consolidado.CT.2026';
+const FILE_URL    = `https://graph.microsoft.com/v1.0/me/drive/root:/${FOLDER_NAME}/Cierres_de_Turno.xlsx:/content`;
+const FOLDER_URL  = 'https://graph.microsoft.com/v1.0/me/drive/root/children';
+
+async function sendToSharePoint(record, config) {
+  const token   = await getAccessToken(config);
+  const authHdr = { 'Authorization': `Bearer ${token}` };
+
+  // 1. Descargar archivo existente o crear nuevo
+  let base64;
+  const fileRes = await fetch(FILE_URL, { headers: authHdr });
+  if (fileRes.ok) {
+    base64 = await arrayBufferToBase64(await fileRes.arrayBuffer());
+  } else if (fileRes.status === 404) {
+    // Crear la carpeta si no existe (ignorar error 409 = ya existe)
+    await fetch(FOLDER_URL, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: FOLDER_NAME, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
+    });
+    base64 = crearLibroNuevo();
+  } else {
+    const err = await fileRes.json().catch(() => ({}));
+    throw new Error(`Error descargando archivo (${fileRes.status}): ${err.error?.message || ''}`);
+  }
+
+  // 2. Agregar fila a la hoja de la planta
+  const sheetName = PLANT_LABELS[record.planta] || record.planta;
+  const rowData   = { ...record, fechaHoraEnvio: new Date().toISOString() };
+  const newBase64 = agregarFila(base64, sheetName, rowData);
+
+  // 3. Subir archivo actualizado
+  const uploadRes = await fetch(FILE_URL, {
+    method:  'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type':  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    },
+    body: base64ToUint8Array(newBase64),
+  });
+  if (!uploadRes.ok) {
+    const err = await uploadRes.json().catch(() => ({}));
+    throw new Error(`Error subiendo archivo (${uploadRes.status}): ${err.error?.message || ''}`);
+  }
+}
+
+const isConfigOk = cfg => !!(cfg?.tenantId?.trim() && cfg?.clientId?.trim());
+
+// ════════════════════════════════════════════════════════════════
+// COMPONENTES BASE DE FORMULARIO
+// ════════════════════════════════════════════════════════════════
+function Field({ name, label, hint, type='text', required=true, value, onChange, error, ...rest }) {
+  return (
+    <div className={`field${error?' field-error':''}`}>
+      <label htmlFor={name}>{label}{required&&<span className="req">*</span>}</label>
+      {hint&&<span className="field-hint">{hint}</span>}
+      <input id={name} name={name} type={type} value={value} onChange={onChange}
+        inputMode={type==='number'?'decimal':undefined} autoComplete="off" {...rest}/>
+      {error&&<span className="error-msg">{error}</span>}
+    </div>
+  );
+}
+function Sel({ name, label, options, value, onChange, error, required=true }) {
+  return (
+    <div className={`field${error?' field-error':''}`}>
+      <label htmlFor={name}>{label}{required&&<span className="req">*</span>}</label>
+      <select id={name} name={name} value={value} onChange={onChange}>
+        <option value="">-- Seleccionar --</option>
+        {options.map(o=><option key={o} value={o}>{o}</option>)}
+      </select>
+      {error&&<span className="error-msg">{error}</span>}
+    </div>
+  );
+}
+function SecCard({ title, children }) {
+  return (
+    <div className="form-section">
+      <div className="section-header">{title}</div>
+      <div className="section-body">{children}</div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// FORMULARIO DE TURNO
+// ════════════════════════════════════════════════════════════════
+
+// Componente reutilizable para pares de detenciones
+function DetPairs({ form, errors, onChange, suffix='' }) {
+  const det = (name, lbl, ph) => (
+    <Field name={name} label={lbl} type="text" value={form[name]??''} onChange={onChange}
+      error={errors[name]} placeholder={ph}/>
+  );
+  const tim = (name, lbl) => (
+    <Field name={name} label={lbl} type="number" value={form[name]??''} onChange={onChange}
+      error={errors[name]} min={0} step="1"/>
+  );
+  const s = suffix;
+  return (
+    <>
+      <SecCard title={`Detenciones Operacionales${s?' Horno '+s:''}`}>
+        <div className="detencion-grid">
+          <div className="detencion-pair">
+            <div className="detencion-pair-label">Detencion 1</div>
+            {det('detencionOperacion1'+s,'Descripcion','Describa la detencion...')}
+            {tim('tiempoDetencionOperacion1'+s,'Tiempo (min)')}
+          </div>
+          <div className="detencion-pair">
+            <div className="detencion-pair-label">Detencion 2</div>
+            {det('detencionOperacion2'+s,'Descripcion','Describa la detencion...')}
+            {tim('tiempoDetencionOperacion2'+s,'Tiempo (min)')}
+          </div>
+        </div>
+      </SecCard>
+      <SecCard title={`Detenciones de Mantencion${s?' Horno '+s:''}`}>
+        <div className="detencion-grid">
+          <div className="detencion-pair">
+            <div className="detencion-pair-label">Detencion 1</div>
+            {det('detencionMantencion1'+s,'Descripcion','Describa la detencion...')}
+            {tim('tiempoDetencionMantencion1'+s,'Tiempo (min)')}
+          </div>
+          <div className="detencion-pair">
+            <div className="detencion-pair-label">Detencion 2</div>
+            {det('detencionMantencion2'+s,'Descripcion','Describa la detencion...')}
+            {tim('tiempoDetencionMantencion2'+s,'Tiempo (min)')}
+          </div>
+        </div>
+      </SecCard>
+    </>
+  );
+}
+
+function ShiftForm({ plant, onBack, onReview, initialData }) {
+  const [form, setForm]       = useState(() => initialData || getInitialState(plant));
+  const [errors, setErrors]   = useState({});
+  const [lastRec, setLastRec] = useState(null);
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    setLastRec(getLastRecord(plant));
+    if (!initialData) { setForm(getInitialState(plant)); setErrors({}); }
+  }, [plant]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]:value }));
+    if (errors[name]) setErrors(prev => { const n={...prev}; delete n[name]; return n; });
+  };
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    const errs = validate(form, plant, lastRec);
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      setTimeout(() => {
+        const el = formRef.current?.querySelector('.field-error');
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 50);
+      return;
+    }
+    onReview(plant, form);
+  };
+
+  const f = (name, label, hint, type, props={}) => (
+    <Field name={name} label={label} hint={hint} type={type||'text'}
+      value={form[name]??''} onChange={handleChange} error={errors[name]} {...props}/>
+  );
+  const s = (name, label, options) => (
+    <Sel name={name} label={label} options={options}
+      value={form[name]??''} onChange={handleChange} error={errors[name]}/>
+  );
+  const lastVal = field => {
+    if (!lastRec) return null;
+    const v = lastRec[field];
+    return (v!==undefined&&v!==''&&v!==null) ? `Ultimo: ${v}` : null;
+  };
+  const num = (name, label, useLast=false, extraProps={}) =>
+    f(name, label, useLast?lastVal(name):null, 'number', {min:0, step:'0.1', ...extraProps});
+
+  const color     = PLANT_COLORS[plant] || '#1e3a5f';
+  const sopOpts   = SOP_BY_PLANT[plant]   || SOP_OPTIONS;
+  const turnoOpts = TURNO_BY_PLANT[plant] || TURNO_AB;
+  const matOpts   = MAT_BY_PLANT[plant];
+
+  const Hdr = ({ label }) => (
+    <header className="form-header" style={{background:color}}>
+      <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
+      <div className="form-header-title">
+        <span className="form-header-label">Cierre de Turno</span>
+        <span className="form-header-plant">{label}</span>
+      </div>
+    </header>
+  );
+  const LastBanner = () => lastRec ? (
+    <div className="last-record-banner">
+      <strong>Ultimo:</strong> {lastRec.fecha} &mdash; T{lastRec.turno} &mdash; {lastRec.sop}
+    </div>
+  ) : null;
+  const ErrSummary = () => Object.keys(errors).length > 0 ? (
+    <div className="error-summary">&#9888; Hay {Object.keys(errors).length} campo(s) con error.</div>
+  ) : null;
+  const FormActions = () => (
+    <div className="form-actions">
+      <button type="button" className="btn-cancel" onClick={onBack}>Cancelar</button>
+      <button type="submit" className="btn-save" style={{background:color}}>Revisar datos &#8250;</button>
+    </div>
+  );
+  const SecGeneral = ({ withMat=true }) => (
+    <SecCard title="Informacion General">
+      <div className="form-grid">
+        {f('fecha','Fecha',null,'date')}
+        {s('turno','Turno',turnoOpts)}
+        {s('sop','SOP',sopOpts)}
+        {withMat && matOpts && s('tipoMaterial','Tipo Material',matOpts)}
+      </div>
+    </SecCard>
+  );
+  const SecHoras = () => (
+    <SecCard title="Horas">
+      <div className="form-grid">
+        {f('horasProgramadas','Horas Programadas','Maximo 12','number',{min:0,max:12,step:'0.5'})}
+        {f('horasMantenimientoProgramado','Horas Mant. Programado','Entre 0 y 12','number',{min:0,max:12,step:'0.5'})}
+      </div>
+    </SecCard>
+  );
+  const SecEstado = () => (
+    <SecCard title="Estado del Registro">
+      <div className="form-grid">
+        {s('estado','Estado',ESTADO_OPTIONS)}
+        {f('creadoPor','Creado Por',null,'text',{placeholder:'Nombre del operador'})}
+      </div>
+    </SecCard>
+  );
+
+  // ── ARENAS ──────────────────────────────────────────────────────
+  if (plant === 'arenas') return (
+    <div className="page">
+      <Hdr label="Arenas"/>
+      <LastBanner/>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+        <SecGeneral/>
+        <SecHoras/>
+        <SecCard title="Medidores Planta">
+          <div className="form-grid">
+            {num('horometroPlanta','Horometro Planta',true)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {num('litrosPetroleo','Litros de Petroleo')}
+            {num('horometroGenerador','Horometro Generador',true)}
+            {num('kilosFloculante','Kilos de Floculante')}
+          </div>
+        </SecCard>
+        <SecCard title="Produccion">
+          <div className="form-grid">
+            {num('pesometroProduccion','Pesometro Produccion',true)}
+            {num('flujo','Flujo (Ton/h)')}
+            {f('numeroBolasM1','N\u00b0 de Bolas M1',null,'number',{min:0,step:'1'})}
+            {f('numeroBolasM2','N\u00b0 de Bolas M2',null,'number',{min:0,step:'1'})}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecEstado/>
+        <ErrSummary/>
+        <FormActions/>
+      </form>
+    </div>
+  );
+
+  // ── CUARZO ──────────────────────────────────────────────────────
+  if (plant === 'cuarzo') return (
+    <div className="page">
+      <Hdr label="Cuarzo"/>
+      <LastBanner/>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+        <SecGeneral/>
+        <SecHoras/>
+        <SecCard title="Medidores Planta">
+          <div className="form-grid">
+            {num('horometroPlanta','Horometro Planta',true)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {num('litrosPetroleo','Litros de Petroleo')}
+            {num('horometroGenerador','Horometro Generador',true)}
+            {num('kilosFloculante','Kilos de Floculante')}
+            {num('horometroVSI','Horometro VSI',true)}
+            {num('litrosPetroleoVSI','Litros Petroleo VSI')}
+            {num('odometroPetroleo','Odometro Petroleo')}
+          </div>
+        </SecCard>
+        <SecCard title="Produccion Cuarzo">
+          <div className="form-grid">
+            {num('pesometroProduccionCuarzo','Pesometro Prod. Cuarzo',true)}
+            {f('pesometroProduccionCompacta','Pesometro Prod. Compacta',lastVal('pesometroProduccionCompacta')||'Opcional','number',{min:0,step:'0.1',required:false})}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecEstado/>
+        <ErrSummary/>
+        <FormActions/>
+      </form>
+    </div>
+  );
+
+  // ── LAVADO P ─────────────────────────────────────────────────────
+  if (plant === 'lavadoP') return (
+    <div className="page">
+      <Hdr label="Lavado P"/>
+      <LastBanner/>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+        <SecGeneral/>
+        <SecHoras/>
+        <SecCard title="Medidores Planta">
+          <div className="form-grid">
+            {num('horometroPlanta','Horometro Planta',true)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {num('bolsasFloculante','Bolsas de Floculante')}
+            {num('consumoElectricoKW','Consumo Electrico (kW)')}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecEstado/>
+        <ErrSummary/>
+        <FormActions/>
+      </form>
+    </div>
+  );
+
+  // ── SECADO P ─────────────────────────────────────────────────────
+  if (plant === 'secadoP') {
+    const HornoSec = ({ sfx, label }) => (
+      <>
+        <div className="horno-divider">{label}</div>
+        <SecCard title={`${label} — Horas`}>
+          <div className="form-grid">
+            {f('horasProgramadas'+sfx,'Horas Programadas','Max 12','number',{min:0,max:12,step:'0.5'})}
+            {f('horasMantenimientoProgramado'+sfx,'Horas Mant. Programado','Entre 0 y 12','number',{min:0,max:12,step:'0.5'})}
+          </div>
+        </SecCard>
+        <SecCard title={`${label} — Medidores`}>
+          <div className="form-grid">
+            {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number',{min:0,step:'0.1'})}
+            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number',{min:0,step:'0.1'})}
+          </div>
+        </SecCard>
+        <SecCard title={`${label} — Produccion`}>
+          <div className="form-grid">
+            {f('pesometroProduccion'+sfx,'Pesometro Produccion',lastVal('pesometroProduccion'+sfx),'number',{min:0,step:'0.1'})}
+            {f('consumoGas'+sfx,'Consumo Gas',null,'number',{min:0,step:'0.1'})}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange} suffix={sfx}/>
+      </>
+    );
+    return (
+      <div className="page">
+        <Hdr label="Secado P"/>
+        <LastBanner/>
+        <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+          <SecGeneral withMat={false}/>
+          <HornoSec sfx="A" label="Horno A"/>
+          <HornoSec sfx="B" label="Horno B"/>
+          <SecCard title="Silos">
+            <div className="form-grid">
+              {[1,2,3,4,5,6].map(i => s('silo'+i,'Silo '+i,SILO_OPTIONS))}
+            </div>
+          </SecCard>
+          <SecCard title="Consumo Electrico">
+            <div className="form-grid">
+              {num('consumoElectricoKW','Consumo Electrico (kW)')}
+            </div>
+          </SecCard>
+          <SecEstado/>
+          <ErrSummary/>
+          <FormActions/>
+        </form>
+      </div>
+    );
+  }
+
+  // ── LAVADO T ─────────────────────────────────────────────────────
+  if (plant === 'lavadoT') return (
+    <div className="page">
+      <Hdr label="Lavado T"/>
+      <LastBanner/>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+        <SecGeneral/>
+        <SecHoras/>
+        <SecCard title="Medidores Planta">
+          <div className="form-grid">
+            {num('horometroPlanta','Horometro Planta',true)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {num('kilosFloculante','Kilos de Floculante')}
+            {num('consumoElectricoKW','Consumo Electrico (kW)')}
+          </div>
+        </SecCard>
+        <SecCard title="Produccion">
+          <div className="form-grid">
+            {num('pesometroProduccion','Pesometro Produccion',true)}
+            {num('flujo','Flujo (Ton/h)')}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecEstado/>
+        <ErrSummary/>
+        <FormActions/>
+      </form>
+    </div>
+  );
+
+  // ── SECADO T (default) ────────────────────────────────────────────
+  return (
+    <div className="page">
+      <Hdr label="Secado T"/>
+      <LastBanner/>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
+        <SecGeneral withMat={false}/>
+        <SecHoras/>
+        <SecCard title="Medidores Planta">
+          <div className="form-grid">
+            {num('horometroPlanta','Horometro Planta',true)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {num('litrosPetroleo','Litros de Petroleo')}
+            {num('horometroGenerador','Horometro Generador',true)}
+            {num('consumoGas','Consumo Gas')}
+            {num('consumoElectrico','Consumo Electrico')}
+          </div>
+        </SecCard>
+        <SecCard title="Iman">
+          <div className="form-grid">
+            {num('horometroIman','Horometro Iman',true)}
+            {num('pesometroIman','Pesometro Iman',true)}
+          </div>
+        </SecCard>
+        <SecCard title="Fierrillo">
+          <div className="form-grid">
+            {num('horometroInicialFierrillo','Horometro Inicial')}
+            {num('horometroFinalFierrillo','Horometro Final')}
+            {num('pesometroInicialFierrillo','Pesometro Inicial')}
+            {num('pesometroFinalFierrillo','Pesometro Final')}
+          </div>
+        </SecCard>
+        <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecEstado/>
+        <ErrSummary/>
+        <FormActions/>
+      </form>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// PANTALLA DE REVISIÓN PREVIA
+// ════════════════════════════════════════════════════════════════
+function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
+  // status: idle | sending | success | error | noconfig
+  const [status,      setStatus]     = useState('idle');
+  const [errorMsg,    setErrorMsg]   = useState('');
+  const [savedRecord, setSavedRecord]= useState(null);
+
+  const config   = getConfig();
+  const configOk = isConfigOk(config);
+  const color    = PLANT_COLORS[plant] || '#1e3a5f';
+  const sections = getReviewSections(plant);
+  const isBusy   = status === 'sending';
+
+  const doSend = async record => {
+    setStatus('sending');
+    try {
+      await sendToSharePoint(record, config);
+      const ts = new Date().toISOString();
+      markAsSent(record.id, ts);
+      setStatus('success');
+      setTimeout(() => onConfirmed('sent'), 2200);
+    } catch (err) {
+      markAsError(record.id, err.message);
+      setStatus('error');
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!configOk) { setStatus('noconfig'); return; }
+    let rec = savedRecord;
+    if (!rec) {
+      rec = saveRecord({ ...formData, planta:plant });
+      setSavedRecord(rec);
+    }
+    await doSend(rec);
+  };
+
+  const handleRetry = async () => {
+    if (savedRecord) await doSend(savedRecord);
+  };
+
+  const handleSaveLocal = () => {
+    if (!savedRecord) {
+      const r = saveRecord({ ...formData, planta:plant, errorEnvio:'Guardado solo localmente' });
+      setSavedRecord(r);
+    }
+    onConfirmed('local');
+  };
+
+  return (
+    <div className="review-page">
+      <header className="form-header" style={{background:color}}>
+        <button className="btn-back" onClick={onEdit} type="button" disabled={isBusy}>
+          &#8592; Editar
+        </button>
+        <div className="form-header-title">
+          <span className="form-header-label">Revision de datos &mdash; {PLANT_LABELS[plant]}</span>
+          <span className="form-header-plant">Confirme antes de enviar</span>
+        </div>
+      </header>
+
+      {!configOk&&status==='idle'&&(
+        <div className="warning-banner">
+          &#9888; OneDrive no configurado. Los datos se guardaran solo en este dispositivo.
+        </div>
+      )}
+
+      {/* Secciones de revisión */}
+      {sections.map(sec => {
+        const visible = sec.fields.filter(k => formData[k]!==undefined&&formData[k]!==null&&formData[k]!=='');
+        if (!visible.length) return null;
+        return (
+          <div key={sec.title} className="review-section">
+            <div className="section-header">{sec.title}</div>
+            <div className="review-grid">
+              {visible.map(key => (
+                <div key={key} className="review-item">
+                  <div className="review-label">{FIELD_LABELS[key]||key}</div>
+                  <div className="review-value">{formData[key]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Estado del envío */}
+      {status==='sending'&&(
+        <div className="send-status-box send-status-sending">
+          <div className="spinner"/>
+          <div className="send-status-body">
+            <div className="send-status-title">Enviando a OneDrive...</div>
+            <div className="send-status-detail">No cierre esta pantalla. Puede tardar unos segundos.</div>
+          </div>
+        </div>
+      )}
+      {status==='success'&&(
+        <div className="send-status-box send-status-success">
+          <span className="send-status-icon">&#9989;</span>
+          <div className="send-status-body">
+            <div className="send-status-title">&#160;Enviado a OneDrive correctamente</div>
+            <div className="send-status-detail">El registro fue guardado en Cierres_de_Turno.xlsx en su OneDrive. Redirigiendo...</div>
+          </div>
+        </div>
+      )}
+      {status==='error'&&(
+        <div className="send-status-box send-status-error">
+          <span className="send-status-icon">&#10060;</span>
+          <div className="send-status-body">
+            <div className="send-status-title">&#160;Error al enviar a OneDrive</div>
+            <div className="send-status-detail">{errorMsg}</div>
+          </div>
+        </div>
+      )}
+      {status==='noconfig'&&(
+        <div className="send-status-box send-status-noconfig">
+          <span className="send-status-icon">&#9888;</span>
+          <div className="send-status-body">
+            <div className="send-status-title">&#160;OneDrive no configurado</div>
+            <div className="send-status-detail">Vaya a Ajustes y complete las credenciales de OneDrive.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Botones de acción */}
+      <div className="form-actions">
+        {(status==='idle'||status==='noconfig')&&(
+          <>
+            <button type="button" className="btn-cancel" onClick={onEdit}>&#8592; Editar</button>
+            {configOk
+              ? <button type="button" className="btn-save" style={{background:color}} onClick={handleConfirm}>
+                  &#10003;&#160;Confirmar y Enviar
+                </button>
+              : <button type="button" className="btn-save" style={{background:'#718096'}} onClick={handleSaveLocal}>
+                  Guardar localmente
+                </button>
+            }
+          </>
+        )}
+        {status==='error'&&(
+          <>
+            <button type="button" className="btn-cancel" onClick={handleSaveLocal}>Guardar local</button>
+            <button type="button" className="btn-save" style={{background:color}} onClick={handleRetry}>
+              &#8635;&#160;Reintentar envio
+            </button>
+          </>
+        )}
+        {status==='sending'&&(
+          <button type="button" className="btn-save" disabled style={{background:'#718096',flex:1}}>
+            Enviando...
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// PANTALLA DE CONFIGURACIÓN
+// ════════════════════════════════════════════════════════════════
+function ConfigScreen({ onBack }) {
+  const [cfg,       setCfg]      = useState(() => ({ ...DEFAULT_SP_CONFIG, ...getConfig() }));
+  const [saved,     setSaved]    = useState(false);
+  const [testing,   setTesting]  = useState(false);
+  const [loggingOut,setLoggingOut]= useState(false);
+  const [testRes,   setTestRes]  = useState(null); // { ok, text }
+  const [account,   setAccount]  = useState(() => getMsalAccount(getConfig()));
+
+  const redirectUri = window.location.href.split(/[?#]/)[0];
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setCfg(prev => ({ ...prev, [name]: value }));
+    setSaved(false);
+    setTestRes(null);
+  };
+
+  const handleSave = e => {
+    e.preventDefault();
+    saveConfig(cfg);
+    _msalApp    = null; // forzar recreacion con nueva config
+    _msalCfgKey = '';
+    setAccount(getMsalAccount(cfg));
+    setSaved(true);
+    setTestRes(null);
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestRes(null);
+    try {
+      const app    = getMsalApp(cfg);
+      const result = await app.loginPopup({ scopes: ['User.Read', 'Files.ReadWrite'] });
+      const token  = result.accessToken;
+      const resp   = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error(`Graph /me respondio ${resp.status}`);
+      const me   = await resp.json();
+      const name = me.displayName || me.userPrincipalName || 'Usuario';
+      setAccount(getMsalAccount(cfg));
+      setTestRes({ ok:true, text:`Sesion iniciada como: ${name}` });
+    } catch (err) {
+      setTestRes({ ok:false, text: err.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    setTestRes(null);
+    try {
+      await msalLogout(cfg);
+      setAccount(null);
+    } catch (err) {
+      setTestRes({ ok:false, text: err.message });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (!confirm('Restaurar valores predeterminados?')) return;
+    setCfg({ ...DEFAULT_SP_CONFIG });
+    setSaved(false);
+    setTestRes(null);
+  };
+
+  return (
+    <div className="config-page">
+      <header className="form-header">
+        <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
+        <div className="form-header-title">
+          <span className="form-header-label">Ajustes</span>
+          <span className="form-header-plant">Conexion a OneDrive</span>
+        </div>
+      </header>
+
+      {/* Sesion activa */}
+      {account&&(
+        <div className="config-section" style={{marginTop:'.75rem'}}>
+          <div className="section-header">Sesion Microsoft</div>
+          <div className="config-body" style={{gap:'.75rem'}}>
+            <div className="config-saved-ok" style={{marginBottom:0}}>
+              &#9989; Sesion activa: <strong>{account.name || account.username}</strong>
+              <span style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.15rem',opacity:.8}}>
+                {account.username}
+              </span>
+            </div>
+            <button type="button" className="btn-cancel"
+              style={{color:'var(--error)',borderColor:'var(--error-border)',alignSelf:'flex-start'}}
+              onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? 'Cerrando sesion...' : '&#8594; Cerrar sesion'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="config-section">
+        <div className="section-header">Credenciales Microsoft Graph API — OneDrive</div>
+        <div className="config-body">
+          <div className="info-box">
+            <strong>Autenticacion delegada — OneDrive del usuario</strong>
+            Al enviar un registro, la app solicita inicio de sesion con su cuenta Microsoft
+            (ventana emergente) y guarda el archivo <strong>Cierres_de_Turno.xlsx</strong> en
+            la raiz del OneDrive del usuario. La sesion se mantiene activa para envios
+            posteriores. No se requieren permisos de administrador.<br/><br/>
+            <strong>URI de redireccion a registrar en Azure AD:</strong><br/>
+            <span style={{fontFamily:'monospace',fontSize:'.8rem',wordBreak:'break-all'}}>
+              {redirectUri}
+            </span><br/>
+            <span style={{fontSize:'.75rem'}}>
+              En Azure AD &rarr; Registros de aplicaciones &rarr; su app &rarr;
+              Autenticacion &rarr; Agregar una plataforma &rarr; Aplicacion de pagina unica (SPA).
+            </span>
+          </div>
+
+          <form onSubmit={handleSave} noValidate style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="tenantId">Tenant ID<span className="req">*</span></label>
+                <input id="tenantId" name="tenantId" type="text" value={cfg.tenantId}
+                  onChange={handleChange} autoComplete="off"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/>
+              </div>
+              <div className="field">
+                <label htmlFor="clientId">Client ID (App ID)<span className="req">*</span></label>
+                <input id="clientId" name="clientId" type="text" value={cfg.clientId}
+                  onChange={handleChange} autoComplete="off"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/>
+              </div>
+            </div>
+
+            {saved&&(
+              <div className="config-saved-ok">&#10003; Configuracion guardada.</div>
+            )}
+
+            {testRes&&(
+              <div className={`config-test-result ${testRes.ok?'config-test-ok':'config-test-err'}`}>
+                {testRes.ok?'✅':'❌'} {testRes.text}
+              </div>
+            )}
+
+            <div style={{display:'flex',gap:'.75rem',flexWrap:'wrap'}}>
+              <button type="button" className="btn-test" onClick={handleTest} disabled={testing}>
+                {testing ? 'Iniciando sesion...' : '&#9654; Probar conexion / Iniciar sesion'}
+              </button>
+              <button type="submit" className="btn-save" style={{background:'var(--primary)'}}>
+                Guardar configuracion
+              </button>
+            </div>
+
+            <div style={{textAlign:'right'}}>
+              <button type="button" onClick={handleReset}
+                style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'.8rem',cursor:'pointer',textDecoration:'underline'}}>
+                Restaurar valores predeterminados
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// HISTORIAL
+// ════════════════════════════════════════════════════════════════
+const ALL_FILTERS = [{ id:'all', label:'Todas' }, ...PLANTS];
+const HIST_FIELDS = Object.entries(FIELD_LABELS).filter(([k]) => k !== 'fecha' && k !== 'turno' && k !== 'sop' && k !== 'tipoMaterial' && k !== 'estado');
+
+function RecordCard({ record, onRefresh }) {
+  const [expanded, setExpanded] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMsg, setRetryMsg] = useState(null);
+
+  const color    = PLANT_COLORS[record.planta] || '#1e3a5f';
+  const config   = getConfig();
+  const configOk = isConfigOk(config);
+
+  const handleRetry = async () => {
+    if (!configOk) { setRetryMsg({ ok:false, text:'OneDrive no configurado. Vaya a Ajustes.' }); return; }
+    setRetrying(true);
+    setRetryMsg(null);
+    try {
+      await sendToSharePoint(record, config);
+      const ts = new Date().toISOString();
+      markAsSent(record.id, ts);
+      setRetryMsg({ ok:true, text:`Enviado el ${new Date(ts).toLocaleString('es-CL')}` });
+      onRefresh();
+    } catch (err) {
+      markAsError(record.id, err.message);
+      setRetryMsg({ ok:false, text:err.message });
+      onRefresh();
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const estadoBadge = record.estado==='Cerrado'
+    ? <span className="badge badge-closed">{record.estado}</span>
+    : <span className="badge badge-review">{record.estado}</span>;
+
+  const cloudBadge = record.enviado
+    ? <span className="badge badge-sent">&#9989; OneDrive</span>
+    : record.errorEnvio
+      ? <span className="badge badge-error">&#10060; Error envio</span>
+      : <span className="badge badge-pending">&#128190; Local</span>;
+
+  return (
+    <div className="record-card" style={{borderLeftColor:color}}>
+      <button className="record-card-header" onClick={()=>setExpanded(v=>!v)} type="button">
+        <div className="record-card-left">
+          <span className="record-plant-dot" style={{background:color}}/>
+          <div>
+            <span className="record-plant-name">{PLANT_LABELS[record.planta]||record.planta}</span>
+            <span className="record-meta">{record.fecha} &middot; Turno {record.turno} &middot; {record.sop}</span>
+          </div>
+        </div>
+        <div className="record-card-right">
+          {estadoBadge}
+          {cloudBadge}
+          <span className="expand-icon">{expanded?'▲':'▼'}</span>
+        </div>
+      </button>
+
+      {expanded&&(
+        <div className="record-detail">
+          <div className="record-detail-grid">
+            <div className="detail-item">
+              <span className="detail-label">Tipo Material</span>
+              <span className="detail-value">{record.tipoMaterial}</span>
+            </div>
+            {HIST_FIELDS.map(([key,label])=>{
+              const v=record[key];
+              if (v===undefined||v===''||v===null) return null;
+              return (
+                <div key={key} className="detail-item">
+                  <span className="detail-label">{label}</span>
+                  <span className="detail-value">{v}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {record.enviado ? (
+            <>
+              <div className="detail-footer sent">
+                &#9989; Enviado a OneDrive: {record.fechaHoraEnvio ? new Date(record.fechaHoraEnvio).toLocaleString('es-CL') : ''}
+              </div>
+              <div className="immutable-badge">&#128274; Registro inmutable &mdash; enviado y bloqueado</div>
+            </>
+          ) : (
+            <>
+              <div className="detail-footer pending">
+                Guardado localmente: {new Date(record.fechaRegistro).toLocaleString('es-CL')}
+              </div>
+              <div className="detail-error-box">
+                {record.errorEnvio
+                  ? <><strong>Ultimo error:</strong> {record.errorEnvio}<br/></>
+                  : 'Este registro aun no ha sido enviado a OneDrive.'
+                }
+                {retryMsg&&(
+                  <div style={{marginTop:'.35rem',fontWeight:600,color:retryMsg.ok?'var(--success)':'var(--error)'}}>
+                    {retryMsg.ok?'✅':'❌'} {retryMsg.text}
+                  </div>
+                )}
+                <button className="btn-retry" onClick={handleRetry}
+                  disabled={retrying||record.enviado} type="button">
+                  {retrying ? 'Enviando...' : '&#8635; Enviar a OneDrive'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function History({ onBack, onOpenConfig }) {
+  const [filter, setFilter] = useState('all');
+  const [rev,    setRev]    = useState(0);
+
+  const allRecords = useMemo(
+    () => getRecords().sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro)),
+    [rev]
+  );
+  const filtered = useMemo(
+    () => filter==='all' ? allRecords : allRecords.filter(r=>r.planta===filter),
+    [allRecords, filter]
+  );
+  const pending = allRecords.filter(r=>!r.enviado).length;
+
+  return (
+    <div className="page">
+      <header className="form-header">
+        <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
+        <div className="form-header-title">
+          <span className="form-header-label">Historial</span>
+          <span className="form-header-plant">Registros guardados</span>
+        </div>
+        <div className="header-right">
+          <button className="btn-action btn-config" onClick={onOpenConfig} type="button"
+            style={{fontSize:'.75rem',padding:'.35rem .7rem'}}>
+            &#9881; Ajustes
+          </button>
+        </div>
+      </header>
+
+      {pending>0&&(
+        <div className="warning-banner">
+          &#9888; {pending} registro{pending!==1?'s':''} pendiente{pending!==1?'s':''} de envio a OneDrive.
+        </div>
+      )}
+
+      <div className="filter-bar">
+        {ALL_FILTERS.map(fi=>(
+          <button key={fi.id} type="button"
+            className={`filter-btn${filter===fi.id?' active':''}`}
+            onClick={()=>setFilter(fi.id)}>{fi.label}</button>
+        ))}
+      </div>
+
+      <div className="history-toolbar">
+        <span className="history-count">{filtered.length} registro{filtered.length!==1?'s':''}</span>
+        <button className="btn-action btn-export" onClick={()=>exportToCSV(filtered)} type="button">
+          &#11015; Exportar CSV
+        </button>
+      </div>
+
+      <div className="history-list">
+        {filtered.length===0
+          ? <div className="empty-state"><p>No hay registros para mostrar.</p></div>
+          : filtered.map(r=><RecordCard key={r.id} record={r} onRefresh={()=>setRev(v=>v+1)}/>)
+        }
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// HOME
+// ════════════════════════════════════════════════════════════════
+function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
+  const [records] = useState(()=>getRecords());
+  const config    = getConfig();
+  const configOk  = isConfigOk(config);
+
+  const getCount   = id => records.filter(r=>r.planta===id).length;
+  const getLastDate = id => {
+    const pr = records.filter(r=>r.planta===id).sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro));
+    return pr.length ? `${pr[0].fecha} T${pr[0].turno}` : null;
+  };
+
+  return (
+    <div className="home-page">
+      <header className="home-header">
+        <img src="Logotipo_MIGRIN_Vertical.png" alt="MIGRIN" className="home-logo-img"/>
+        <div className="home-header-divider"/>
+        <div className="home-header-text">
+          <h1>Cierre de Turno</h1>
+          <p>Operacion Minera &mdash; Seleccione una planta</p>
+        </div>
+      </header>
+
+      <div className="home-content">
+        <div className="home-actions">
+          <button className="btn-action btn-history" onClick={onOpenHistory}>&#128203; Historial</button>
+          <button className="btn-action btn-export"  onClick={()=>exportToCSV(getRecords())}>&#11015; CSV</button>
+          <button className="btn-action btn-config"  onClick={onOpenConfig}>&#9881; Ajustes</button>
+          <span className={`cloud-badge${configOk?'':' cloud-badge-off'}`}>
+            {configOk ? '&#9729; OneDrive OK' : '&#9888; OneDrive no conf.'}
+          </span>
+        </div>
+
+        {!configOk&&(
+          <div className="warning-banner" style={{borderRadius:8,marginBottom:'1rem'}}>
+            &#9888; OneDrive no configurado. Los registros se guardan solo en este dispositivo.
+            <button onClick={onOpenConfig} type="button"
+              style={{marginLeft:'.75rem',background:'none',border:'none',color:'var(--warning)',fontWeight:700,cursor:'pointer',textDecoration:'underline',fontSize:'.85rem'}}>
+              Configurar ahora
+            </button>
+          </div>
+        )}
+
+        <div className="section-label">Plantas</div>
+        <div className="plant-grid">
+          {PLANTS.map(p=>(
+            <button key={p.id} className="plant-btn" onClick={()=>onOpenForm(p.id)}>
+              <div className="plant-avatar" style={{background:p.color}}>{p.abbr}</div>
+              <div className="plant-info">
+                <span className="plant-name">{p.label}</span>
+                <span className="plant-meta">
+                  {getCount(p.id)} registro{getCount(p.id)!==1?'s':''}
+                  {getLastDate(p.id)&&<> &middot; {getLastDate(p.id)}</>}
+                </span>
+              </div>
+              <span className="plant-arrow">&#8250;</span>
+            </button>
+          ))}
+        </div>
+        <div className="home-total">{records.length} registro{records.length!==1?'s':''} en total</div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// MODAL DE CONTRASEÑA (Ajustes)
+// ════════════════════════════════════════════════════════════════
+function PasswordModal({ onSuccess, onCancel }) {
+  const [pwd,   setPwd]   = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    if (pwd === 'ADMIN') {
+      onSuccess();
+    } else {
+      setError('Contrasena incorrecta');
+      setPwd('');
+      inputRef.current?.focus();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="modal-box">
+        <div className="modal-title">&#128274;&nbsp; Ajustes</div>
+        <p className="modal-sub">Ingrese la contrasena de administrador para acceder a esta seccion.</p>
+        <form onSubmit={handleSubmit}>
+          <div className={`field${error?' field-error':''}`} style={{marginBottom:'1.1rem'}}>
+            <label htmlFor="modal-pwd">Contrasena</label>
+            <input ref={inputRef} id="modal-pwd" type="password" value={pwd}
+              onChange={e=>{ setPwd(e.target.value); setError(''); }}
+              placeholder="••••••" autoComplete="off"/>
+            {error&&<span className="error-msg">{error}</span>}
+          </div>
+          <div style={{display:'flex',gap:'.75rem'}}>
+            <button type="button" className="btn-cancel" onClick={onCancel} style={{flex:1}}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-save" style={{background:'var(--header-bg)'}}>
+              Ingresar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// APP PRINCIPAL
+// ════════════════════════════════════════════════════════════════
+function App() {
+  const [view,        setView]       = useState('home');
+  const [activePlant, setActivePlant]= useState(null);
+  const [reviewData,  setReviewData] = useState(null); // { plant, formData }
+  const [editData,    setEditData]   = useState(null); // formData pre-llenado
+  const [toast,       setToast]      = useState(null);
+
+  const showToast = useCallback((msg, type='success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const navigate = useCallback(v => { setView(v); window.scrollTo(0,0); }, []);
+
+  const openForm = useCallback(id => {
+    setActivePlant(id); setEditData(null); navigate('form');
+  }, [navigate]);
+
+  const handleReview = useCallback((plant, formData) => {
+    setReviewData({ plant, formData }); navigate('review');
+  }, [navigate]);
+
+  const handleEditFromReview = useCallback(() => {
+    setEditData(reviewData?.formData || null);
+    setActivePlant(reviewData?.plant || activePlant);
+    navigate('form');
+  }, [reviewData, activePlant, navigate]);
+
+  const handleConfirmed = useCallback(mode => {
+    setReviewData(null); setEditData(null);
+    if (mode==='sent')  showToast('&#9989; Enviado correctamente a OneDrive');
+    if (mode==='local') showToast('&#128190; Guardado localmente (sin envio a la nube)');
+    navigate('home');
+  }, [navigate, showToast]);
+
+  const [passModal, setPassModal] = useState(false);
+
+  const goHome    = useCallback(() => { setReviewData(null); setEditData(null); navigate('home'); }, [navigate]);
+  const goHistory = useCallback(() => navigate('history'), [navigate]);
+  const goConfig  = useCallback(() => setPassModal(true),  []);
+
+  const handlePassSuccess = useCallback(() => { setPassModal(false); navigate('config'); }, [navigate]);
+  const handlePassCancel  = useCallback(() => setPassModal(false), []);
+
+  return (
+    <div>
+      {passModal&&<PasswordModal onSuccess={handlePassSuccess} onCancel={handlePassCancel}/>}
+      {toast&&<div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+
+      {view==='home'&&(
+        <Home onOpenForm={openForm} onOpenHistory={goHistory} onOpenConfig={goConfig}/>
+      )}
+      {view==='form'&&activePlant&&(
+        <ShiftForm plant={activePlant} onBack={goHome} onReview={handleReview} initialData={editData}/>
+      )}
+      {view==='review'&&reviewData&&(
+        <ReviewScreen plant={reviewData.plant} formData={reviewData.formData}
+          onEdit={handleEditFromReview} onConfirmed={handleConfirmed}/>
+      )}
+      {view==='history'&&(
+        <History onBack={goHome} onOpenConfig={goConfig}/>
+      )}
+      {view==='config'&&(
+        <ConfigScreen onBack={()=>navigate(reviewData?'review':'home')}/>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
