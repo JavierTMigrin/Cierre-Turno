@@ -87,6 +87,8 @@
     /* ── Banners ── */
     .last-record-banner { background: var(--primary-xlight); border-left: 4px solid var(--primary); color: #1a4731; padding: .65rem 1.1rem; font-size: .825rem; }
     .warning-banner     { background: var(--warning-bg); border-left: 4px solid var(--warning); color: var(--warning); padding: .75rem 1.1rem; font-size: .85rem; }
+    .horas-det-banner   { background: #f0fff4; border-left: 4px solid var(--primary-dark); color: #1a4731; padding: .7rem 1.1rem; font-size: .88rem; margin: .875rem .875rem 0; border-radius: var(--radius-sm); }
+    @media (max-width: 520px) { .horas-det-banner { margin: .5rem .5rem 0; } }
 
     /* ── Secciones de formulario ── */
     .shift-form { padding: 0; }
@@ -370,10 +372,10 @@ const FIELD_LABELS = {
   kilosFloculante:'Kilos de Floculante', bolsasFloculante:'Bolsas de Floculante',
   consumoElectricoKW:'Consumo Electrico (kW)', consumoGas:'Consumo Gas', consumoElectrico:'Consumo Electrico',
   odometroPetroleo:'Odometro Petroleo',
-  detencionOperacion1:'Detencion Op.1', tiempoDetencionOperacion1:'Tiempo Det.Op.1 (min)',
-  detencionOperacion2:'Detencion Op.2', tiempoDetencionOperacion2:'Tiempo Det.Op.2 (min)',
-  detencionMantencion1:'Detencion Mant.1', tiempoDetencionMantencion1:'Tiempo Det.Mant.1 (min)',
-  detencionMantencion2:'Detencion Mant.2', tiempoDetencionMantencion2:'Tiempo Det.Mant.2 (min)',
+  detencionOperacion1:'Detencion Op.1', tiempoDetencionOperacion1:'Tiempo Det.Op.1 (hrs)',
+  detencionOperacion2:'Detencion Op.2', tiempoDetencionOperacion2:'Tiempo Det.Op.2 (hrs)',
+  detencionMantencion1:'Detencion Mant.1', tiempoDetencionMantencion1:'Tiempo Det.Mant.1 (hrs)',
+  detencionMantencion2:'Detencion Mant.2', tiempoDetencionMantencion2:'Tiempo Det.Mant.2 (hrs)',
   pesometroProduccion:'Pesometro Produccion', numeroBolasM1:'N\u00b0 Bolas M1',
   numeroBolasM2:'N\u00b0 Bolas M2', flujo:'Flujo (Ton/h)',
   pesometroProduccionCuarzo:'Pesometro Prod.Cuarzo', pesometroProduccionCompacta:'Pesometro Prod.Compacta',
@@ -382,18 +384,18 @@ const FIELD_LABELS = {
   horasProgramadasA:'Horas Programadas H.A', horasMantenimientoProgramadoA:'Horas Mant. Prog. H.A',
   horometroPlantaA:'Horometro Planta H.A', pesometroAlimentacionA:'Pesometro Alim. H.A',
   pesometroProduccionA:'Pesometro Prod. H.A', consumoGasA:'Consumo Gas H.A',
-  detencionOperacion1A:'Det. Op. 1 H.A', tiempoDetencionOperacion1A:'Tiempo Det.Op.1 H.A (min)',
-  detencionOperacion2A:'Det. Op. 2 H.A', tiempoDetencionOperacion2A:'Tiempo Det.Op.2 H.A (min)',
-  detencionMantencion1A:'Det. Mant. 1 H.A', tiempoDetencionMantencion1A:'Tiempo Det.Mant.1 H.A (min)',
-  detencionMantencion2A:'Det. Mant. 2 H.A', tiempoDetencionMantencion2A:'Tiempo Det.Mant.2 H.A (min)',
+  detencionOperacion1A:'Det. Op. 1 H.A', tiempoDetencionOperacion1A:'Tiempo Det.Op.1 H.A (hrs)',
+  detencionOperacion2A:'Det. Op. 2 H.A', tiempoDetencionOperacion2A:'Tiempo Det.Op.2 H.A (hrs)',
+  detencionMantencion1A:'Det. Mant. 1 H.A', tiempoDetencionMantencion1A:'Tiempo Det.Mant.1 H.A (hrs)',
+  detencionMantencion2A:'Det. Mant. 2 H.A', tiempoDetencionMantencion2A:'Tiempo Det.Mant.2 H.A (hrs)',
   // Secado P — Horno B
   horasProgramadasB:'Horas Programadas H.B', horasMantenimientoProgramadoB:'Horas Mant. Prog. H.B',
   horometroPlantaB:'Horometro Planta H.B', pesometroAlimentacionB:'Pesometro Alim. H.B',
   pesometroProduccionB:'Pesometro Prod. H.B', consumoGasB:'Consumo Gas H.B',
-  detencionOperacion1B:'Det. Op. 1 H.B', tiempoDetencionOperacion1B:'Tiempo Det.Op.1 H.B (min)',
-  detencionOperacion2B:'Det. Op. 2 H.B', tiempoDetencionOperacion2B:'Tiempo Det.Op.2 H.B (min)',
-  detencionMantencion1B:'Det. Mant. 1 H.B', tiempoDetencionMantencion1B:'Tiempo Det.Mant.1 H.B (min)',
-  detencionMantencion2B:'Det. Mant. 2 H.B', tiempoDetencionMantencion2B:'Tiempo Det.Mant.2 H.B (min)',
+  detencionOperacion1B:'Det. Op. 1 H.B', tiempoDetencionOperacion1B:'Tiempo Det.Op.1 H.B (hrs)',
+  detencionOperacion2B:'Det. Op. 2 H.B', tiempoDetencionOperacion2B:'Tiempo Det.Op.2 H.B (hrs)',
+  detencionMantencion1B:'Det. Mant. 1 H.B', tiempoDetencionMantencion1B:'Tiempo Det.Mant.1 H.B (hrs)',
+  detencionMantencion2B:'Det. Mant. 2 H.B', tiempoDetencionMantencion2B:'Tiempo Det.Mant.2 H.B (hrs)',
   // Secado P — silos
   silo1:'Silo 1', silo2:'Silo 2', silo3:'Silo 3', silo4:'Silo 4', silo5:'Silo 5', silo6:'Silo 6',
   // Secado T
@@ -432,12 +434,12 @@ const getReviewSections = plant => {
     { title:'Informacion General',  fields:['fecha','turno','sop'] },
     { title:'Horno A — Horas',      fields:['horasProgramadasA','horasMantenimientoProgramadoA'] },
     { title:'Horno A — Medidores',  fields:['horometroPlantaA','pesometroAlimentacionA'] },
-    { title:'Horno A — Produccion', fields:['pesometroProduccionA','consumoGasA'] },
+    { title:'Horno A — Produccion', fields:['consumoGasA'] },
     { title:'Horno A — Det. Op.',   fields:['detencionOperacion1A','tiempoDetencionOperacion1A','detencionOperacion2A','tiempoDetencionOperacion2A'] },
     { title:'Horno A — Det. Mant.', fields:['detencionMantencion1A','tiempoDetencionMantencion1A','detencionMantencion2A','tiempoDetencionMantencion2A'] },
     { title:'Horno B — Horas',      fields:['horasProgramadasB','horasMantenimientoProgramadoB'] },
     { title:'Horno B — Medidores',  fields:['horometroPlantaB','pesometroAlimentacionB'] },
-    { title:'Horno B — Produccion', fields:['pesometroProduccionB','consumoGasB'] },
+    { title:'Horno B — Produccion', fields:['consumoGasB'] },
     { title:'Horno B — Det. Op.',   fields:['detencionOperacion1B','tiempoDetencionOperacion1B','detencionOperacion2B','tiempoDetencionOperacion2B'] },
     { title:'Horno B — Det. Mant.', fields:['detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B'] },
     { title:'Silos',             fields:['silo1','silo2','silo3','silo4','silo5','silo6'] },
@@ -573,14 +575,14 @@ const getInitialState = plant => {
   if (plant === 'secadoP') return { ...base,
     horasProgramadasA:'', horasMantenimientoProgramadoA:'',
     horometroPlantaA:'', pesometroAlimentacionA:'',
-    pesometroProduccionA:'', consumoGasA:'',
+    consumoGasA:'',
     detencionOperacion1A:'', tiempoDetencionOperacion1A:'',
     detencionOperacion2A:'', tiempoDetencionOperacion2A:'',
     detencionMantencion1A:'', tiempoDetencionMantencion1A:'',
     detencionMantencion2A:'', tiempoDetencionMantencion2A:'',
     horasProgramadasB:'', horasMantenimientoProgramadoB:'',
     horometroPlantaB:'', pesometroAlimentacionB:'',
-    pesometroProduccionB:'', consumoGasB:'',
+    consumoGasB:'',
     detencionOperacion1B:'', tiempoDetencionOperacion1B:'',
     detencionOperacion2B:'', tiempoDetencionOperacion2B:'',
     detencionMantencion1B:'', tiempoDetencionMantencion1B:'',
@@ -624,7 +626,7 @@ const validate = (data, plant, lr) => {
      ['detencionMantencion2','tiempoDetencionMantencion2'],
     ].forEach(([d,t]) => {
       if (!data[d+sfx]?.trim()) e[d+sfx]='Describa la detencion';
-      if (!isNum(data[t+sfx])) e[t+sfx]='Ingrese el tiempo (min)';
+      if (!isNum(data[t+sfx])) e[t+sfx]='Ingrese el tiempo (hrs)';
     });
   };
 
@@ -673,7 +675,6 @@ const validate = (data, plant, lr) => {
       horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
       mono('horometroPlanta'+sfx,'el horometro de planta horno '+sfx);
       mono('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx);
-      mono('pesometroProduccion'+sfx,'el pesometro de produccion horno '+sfx);
       numReq('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
@@ -926,7 +927,7 @@ function DetPairs({ form, errors, onChange, suffix='' }) {
   );
   const tim = (name, lbl) => (
     <Field name={name} label={lbl} type="number" value={form[name]??''} onChange={onChange}
-      error={errors[name]} min={0} step="1"/>
+      error={errors[name]}/>
   );
   const s = suffix;
   return (
@@ -936,12 +937,12 @@ function DetPairs({ form, errors, onChange, suffix='' }) {
           <div className="detencion-pair">
             <div className="detencion-pair-label">Detencion 1</div>
             {det('detencionOperacion1'+s,'Descripcion','Describa la detencion...')}
-            {tim('tiempoDetencionOperacion1'+s,'Tiempo (min)')}
+            {tim('tiempoDetencionOperacion1'+s,'Tiempo (hrs)')}
           </div>
           <div className="detencion-pair">
             <div className="detencion-pair-label">Detencion 2</div>
             {det('detencionOperacion2'+s,'Descripcion','Describa la detencion...')}
-            {tim('tiempoDetencionOperacion2'+s,'Tiempo (min)')}
+            {tim('tiempoDetencionOperacion2'+s,'Tiempo (hrs)')}
           </div>
         </div>
       </SecCard>
@@ -950,12 +951,12 @@ function DetPairs({ form, errors, onChange, suffix='' }) {
           <div className="detencion-pair">
             <div className="detencion-pair-label">Detencion 1</div>
             {det('detencionMantencion1'+s,'Descripcion','Describa la detencion...')}
-            {tim('tiempoDetencionMantencion1'+s,'Tiempo (min)')}
+            {tim('tiempoDetencionMantencion1'+s,'Tiempo (hrs)')}
           </div>
           <div className="detencion-pair">
             <div className="detencion-pair-label">Detencion 2</div>
             {det('detencionMantencion2'+s,'Descripcion','Describa la detencion...')}
-            {tim('tiempoDetencionMantencion2'+s,'Tiempo (min)')}
+            {tim('tiempoDetencionMantencion2'+s,'Tiempo (hrs)')}
           </div>
         </div>
       </SecCard>
@@ -1008,18 +1009,30 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
     return (v!==undefined&&v!==''&&v!==null) ? `Ultimo: ${v}` : null;
   };
   const num = (name, label, useLast=false, extraProps={}) =>
-    f(name, label, useLast?lastVal(name):null, 'number', {min:0, step:'0.1', ...extraProps});
+    f(name, label, useLast?lastVal(name):null, 'number', extraProps);
 
-  // Horas fields: validate range in JS, no min/max HTML attrs, no auto-advance
-  const blockEnter = e => { if (e.key === 'Enter') e.preventDefault(); };
-  const handleHorasChange = e => {
-    const val = e.target.value;
-    if (val === '' || (Number(val) >= 0 && Number(val) <= 12)) {
-      handleChange(e);
-    }
-  };
+  // Horas: validar rango solo en onBlur, sin lógica en onChange
   const hf = (name, label) =>
-    f(name, label, 'Entre 0 y 12', 'number', {onKeyDown: blockEnter, onChange: handleHorasChange});
+    f(name, label, 'Entre 0 y 12', 'number', {onBlur: e => {
+      const v = Number(e.target.value);
+      if (e.target.value !== '' && (isNaN(v) || v < 0 || v > 12))
+        setErrors(prev => ({...prev, [name]: 'Debe estar entre 0 y 12'}));
+    }});
+
+  // Banner de horas de detención (tiempo real)
+  const calcDetBanner = (sfx='') => {
+    const hp   = parseFloat(form['horasProgramadas'+sfx]) || 0;
+    const hmp  = parseFloat(form['horasMantenimientoProgramado'+sfx]) || 0;
+    const hact = parseFloat(form['horometroPlanta'+sfx]) || 0;
+    const hant = parseFloat(lastRec?.['horometroPlanta'+sfx]) || 0;
+    if (!hp && !hmp && !hact) return null;
+    const det = hp - hmp - (hact - hant);
+    return (
+      <div className="horas-det-banner">
+        &#9203; Horas de detenci&#243;n a justificar: <strong>{det.toFixed(2)} hrs</strong>
+      </div>
+    );
+  };
 
   const color     = PLANT_COLORS[plant] || '#1e3a5f';
   const sopOpts   = SOP_BY_PLANT[plant]   || SOP_OPTIONS;
@@ -1079,11 +1092,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   // ── ARENAS ──────────────────────────────────────────────────────
   if (plant === 'arenas') return (
     <div className="page">
-      <Hdr label="Arenas"/>
-      <LastBanner/>
+      {Hdr({label:'Arenas'})}
+      {LastBanner()}
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-        <SecGeneral/>
-        <SecHoras/>
+        {SecGeneral()}
+        {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {num('horometroPlanta','Horometro Planta',true)}
@@ -1097,14 +1110,15 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
           <div className="form-grid">
             {num('pesometroProduccion','Pesometro Produccion',true)}
             {num('flujo','Flujo (Ton/h)')}
-            {f('numeroBolasM1','N\u00b0 de Bolas M1',null,'number',{min:0,step:'1'})}
-            {f('numeroBolasM2','N\u00b0 de Bolas M2',null,'number',{min:0,step:'1'})}
+            {f('numeroBolasM1','N\u00b0 de Bolas M1',null,'number')}
+            {f('numeroBolasM2','N\u00b0 de Bolas M2',null,'number')}
           </div>
         </SecCard>
+        {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        <SecEstado/>
-        <ErrSummary/>
-        <FormActions/>
+        {SecEstado()}
+        {ErrSummary()}
+        {FormActions()}
       </form>
     </div>
   );
@@ -1112,11 +1126,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   // ── CUARZO ──────────────────────────────────────────────────────
   if (plant === 'cuarzo') return (
     <div className="page">
-      <Hdr label="Cuarzo"/>
-      <LastBanner/>
+      {Hdr({label:'Cuarzo'})}
+      {LastBanner()}
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-        <SecGeneral/>
-        <SecHoras/>
+        {SecGeneral()}
+        {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {num('horometroPlanta','Horometro Planta',true)}
@@ -1132,13 +1146,14 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         <SecCard title="Produccion Cuarzo">
           <div className="form-grid">
             {num('pesometroProduccionCuarzo','Pesometro Prod. Cuarzo',true)}
-            {f('pesometroProduccionCompacta','Pesometro Prod. Compacta',lastVal('pesometroProduccionCompacta')||'Opcional','number',{min:0,step:'0.1',required:false})}
+            {f('pesometroProduccionCompacta','Pesometro Prod. Compacta',lastVal('pesometroProduccionCompacta')||'Opcional','number',{required:false})}
           </div>
         </SecCard>
+        {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        <SecEstado/>
-        <ErrSummary/>
-        <FormActions/>
+        {SecEstado()}
+        {ErrSummary()}
+        {FormActions()}
       </form>
     </div>
   );
@@ -1146,11 +1161,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   // ── LAVADO P ─────────────────────────────────────────────────────
   if (plant === 'lavadoP') return (
     <div className="page">
-      <Hdr label="Lavado P"/>
-      <LastBanner/>
+      {Hdr({label:'Lavado P'})}
+      {LastBanner()}
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-        <SecGeneral/>
-        <SecHoras/>
+        {SecGeneral()}
+        {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {num('horometroPlanta','Horometro Planta',true)}
@@ -1159,10 +1174,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('consumoElectricoKW','Consumo Electrico (kW)')}
           </div>
         </SecCard>
+        {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        <SecEstado/>
-        <ErrSummary/>
-        <FormActions/>
+        {SecEstado()}
+        {ErrSummary()}
+        {FormActions()}
       </form>
     </div>
   );
@@ -1180,27 +1196,27 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title={`${label} — Medidores`}>
           <div className="form-grid">
-            {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number',{min:0,step:'0.1'})}
-            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number',{min:0,step:'0.1'})}
+            {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number')}
+            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number')}
           </div>
         </SecCard>
-        <SecCard title={`${label} — Produccion`}>
+        <SecCard title={`${label} — Consumo Gas`}>
           <div className="form-grid">
-            {f('pesometroProduccion'+sfx,'Pesometro Produccion',lastVal('pesometroProduccion'+sfx),'number',{min:0,step:'0.1'})}
-            {f('consumoGas'+sfx,'Consumo Gas',null,'number',{min:0,step:'0.1'})}
+            {f('consumoGas'+sfx,'Consumo Gas',null,'number')}
           </div>
         </SecCard>
+        {calcDetBanner(sfx)}
         <DetPairs form={form} errors={errors} onChange={handleChange} suffix={sfx}/>
       </>
     );
     return (
       <div className="page">
-        <Hdr label="Secado P"/>
-        <LastBanner/>
+        {Hdr({label:'Secado P'})}
+        {LastBanner()}
         <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-          <SecGeneral withMat={false}/>
-          <HornoSec sfx="A" label="Horno A"/>
-          <HornoSec sfx="B" label="Horno B"/>
+          {SecGeneral({withMat:false})}
+          {HornoSec({sfx:'A', label:'Horno A'})}
+          {HornoSec({sfx:'B', label:'Horno B'})}
           <SecCard title="Silos">
             <div className="form-grid">
               {[1,2,3,4,5,6].map(i => s('silo'+i,'Silo '+i,SILO_OPTIONS))}
@@ -1211,9 +1227,9 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
               {num('consumoElectricoKW','Consumo Electrico (kW)')}
             </div>
           </SecCard>
-          <SecEstado/>
-          <ErrSummary/>
-          <FormActions/>
+          {SecEstado()}
+          {ErrSummary()}
+          {FormActions()}
         </form>
       </div>
     );
@@ -1222,11 +1238,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   // ── LAVADO T ─────────────────────────────────────────────────────
   if (plant === 'lavadoT') return (
     <div className="page">
-      <Hdr label="Lavado T"/>
-      <LastBanner/>
+      {Hdr({label:'Lavado T'})}
+      {LastBanner()}
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-        <SecGeneral/>
-        <SecHoras/>
+        {SecGeneral()}
+        {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {num('horometroPlanta','Horometro Planta',true)}
@@ -1241,10 +1257,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('flujo','Flujo (Ton/h)')}
           </div>
         </SecCard>
+        {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        <SecEstado/>
-        <ErrSummary/>
-        <FormActions/>
+        {SecEstado()}
+        {ErrSummary()}
+        {FormActions()}
       </form>
     </div>
   );
@@ -1252,11 +1269,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   // ── SECADO T (default) ────────────────────────────────────────────
   return (
     <div className="page">
-      <Hdr label="Secado T"/>
-      <LastBanner/>
+      {Hdr({label:'Secado T'})}
+      {LastBanner()}
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="shift-form">
-        <SecGeneral withMat={false}/>
-        <SecHoras/>
+        {SecGeneral({withMat:false})}
+        {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {num('horometroPlanta','Horometro Planta',true)}
@@ -1281,10 +1298,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('pesometroFinalFierrillo','Pesometro Final')}
           </div>
         </SecCard>
+        {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        <SecEstado/>
-        <ErrSummary/>
-        <FormActions/>
+        {SecEstado()}
+        {ErrSummary()}
+        {FormActions()}
       </form>
     </div>
   );
