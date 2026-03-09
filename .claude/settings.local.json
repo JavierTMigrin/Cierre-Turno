@@ -4,7 +4,11 @@
       "Bash(npm install:*)",
       "Bash(\"/c/Program:*)",
       "Bash(cmd.exe:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Read(//c/Users/javie/OneDrive - El Alto/Consolidado.CT.2026/**)",
+      "Read(//tmp/**)",
+      "Bash(python3.exe:*)",
+      "Bash(where:*)"
     ]
   }
 }
