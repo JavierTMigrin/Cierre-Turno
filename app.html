@@ -324,6 +324,37 @@
     /* ── Estado vacío ── */
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
     .empty-state p { margin-bottom: .4rem; font-size: .9rem; }
+
+    /* ── Botón Admin (home) ── */
+    .btn-admin-home {
+      display: block; margin: 1.5rem auto 0; background: none; border: 1px solid var(--border);
+      color: var(--text-muted); font-size: .72rem; padding: .3rem .8rem;
+      border-radius: 20px; cursor: pointer; transition: all var(--transition);
+    }
+    .btn-admin-home:hover { border-color: var(--text-muted); color: var(--text-secondary); }
+
+    /* ── Panel de administración ── */
+    .admin-section { background: var(--card); margin: .875rem .875rem 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .admin-bulk-bar { display: flex; align-items: center; gap: .6rem; padding: .5rem .9rem; background: #f9fafb; border-bottom: 1px solid var(--border-light); font-size: .8rem; color: var(--text-secondary); }
+    .admin-bulk-bar select { padding: .2rem .4rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .8rem; }
+    .btn-del-bulk { background: var(--error); color: #fff; border: none; padding: .25rem .7rem; border-radius: var(--radius-sm); font-size: .78rem; font-weight: 700; cursor: pointer; }
+    .btn-del-bulk:hover { background: #9b2020; }
+    .admin-table { overflow-x: auto; }
+    .admin-table-head, .admin-table-row {
+      display: grid; grid-template-columns: 90px 52px 80px 1fr 140px 40px;
+      gap: 0; align-items: center;
+    }
+    .admin-table-head { background: #f3f4f6; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .admin-table-head > span, .admin-table-row > span { padding: .45rem .6rem; }
+    .admin-table-row { border-top: 1px solid var(--border-light); font-size: .82rem; }
+    .admin-table-row:nth-child(even) { background: #fafafa; }
+    .btn-del-row { background: none; border: none; cursor: pointer; font-size: 1rem; padding: .3rem; color: var(--error); transition: transform var(--transition); }
+    .btn-del-row:hover { transform: scale(1.2); }
+    .btn-del-row:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    @media (max-width: 600px) {
+      .admin-table-head, .admin-table-row { grid-template-columns: 80px 40px 1fr 1fr 36px; }
+      .admin-table-head > span:nth-child(5), .admin-table-row > span:nth-child(5) { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -786,6 +817,28 @@ function crearLibroNuevo() {
     XLSX.utils.book_append_sheet(wb, ws, p.label);
   });
   return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+}
+
+async function deleteRowsFromExcel(token, sheetName, fechaRegistros) {
+  const authHdr = { 'Authorization': `Bearer ${token}` };
+  const fileRes = await fetch(FILE_URL, { headers: authHdr });
+  if (!fileRes.ok) throw new Error(`Error descargando archivo (${fileRes.status})`);
+  const wb = XLSX.read(await arrayBufferToBase64(await fileRes.arrayBuffer()), { type: 'base64' });
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error(`Hoja "${sheetName}" no encontrada`);
+  const rows    = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  const headers = rows[0] || [];
+  const fidx    = headers.indexOf('fechaRegistro');
+  const toRemove = new Set(fechaRegistros.map(String));
+  const kept  = rows.filter((row, i) => i === 0 || fidx === -1 || !toRemove.has(String(row[fidx] ?? '')));
+  wb.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(kept);
+  const newB64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+  const up = await fetch(FILE_URL, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    body: base64ToUint8Array(newB64),
+  });
+  if (!up.ok) { const e = await up.json().catch(()=>({})); throw new Error(`Error subiendo (${up.status}): ${e.error?.message||''}`); }
 }
 
 function agregarFila(base64, sheetName, rowData) {
@@ -1733,13 +1786,14 @@ function ConfigScreen({ onBack }) {
 const ALL_FILTERS = [{ id:'all', label:'Todas' }, ...PLANTS];
 const HIST_FIELDS = Object.entries(FIELD_LABELS).filter(([k]) => k !== 'fecha' && k !== 'turno' && k !== 'sop' && k !== 'tipoMaterial' && k !== 'estado');
 
-function RecordCard({ record, onRefresh }) {
-  const [expanded, setExpanded] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-  const [retryMsg, setRetryMsg] = useState(null);
+function RecordCard({ record, onRefresh, config: configProp }) {
+  const [expanded,    setExpanded]    = useState(false);
+  const [retrying,    setRetrying]    = useState(false);
+  const [retryMsg,    setRetryMsg]    = useState(null);
+  const [sentLocally, setSentLocally] = useState(false); // optimistic update
 
   const color    = PLANT_COLORS[record.planta] || '#1e3a5f';
-  const config   = getConfig();
+  const config   = configProp || getConfig();
   const configOk = isConfigOk(config);
 
   const handleRetry = async () => {
@@ -1750,12 +1804,12 @@ function RecordCard({ record, onRefresh }) {
       await sendToSharePoint(record, config);
       const ts = new Date().toISOString();
       markAsSent(record.id, ts);
+      setSentLocally(true);
       setRetryMsg({ ok:true, text:`Enviado el ${new Date(ts).toLocaleString('es-CL')}` });
-      onRefresh();
+      setTimeout(() => onRefresh(), 1200);
     } catch (err) {
       markAsError(record.id, err.message);
       setRetryMsg({ ok:false, text:err.message });
-      onRefresh();
     } finally {
       setRetrying(false);
     }
@@ -1765,7 +1819,8 @@ function RecordCard({ record, onRefresh }) {
     ? <span className="badge badge-closed">{record.estado}</span>
     : <span className="badge badge-review">{record.estado}</span>;
 
-  const cloudBadge = record.enviado
+  const isEnviado = record.enviado || sentLocally;
+  const cloudBadge = isEnviado
     ? <span className="badge badge-sent">&#9989; OneDrive</span>
     : record.errorEnvio
       ? <span className="badge badge-error">&#10060; Error envio</span>
@@ -1789,7 +1844,7 @@ function RecordCard({ record, onRefresh }) {
       </button>
 
       {/* Barra de envío — siempre visible para registros pendientes */}
-      {!record.enviado&&(
+      {!isEnviado&&(
         <div className="record-pending-bar">
           {retryMsg&&(
             <span style={{fontSize:'.8rem',fontWeight:600,color:retryMsg.ok?'var(--success)':'var(--error)'}}>
@@ -1831,7 +1886,7 @@ function RecordCard({ record, onRefresh }) {
             })}
           </div>
 
-          {record.enviado ? (
+          {isEnviado ? (
             <>
               <div className="detail-footer sent">
                 &#9989; Enviado a OneDrive: {record.fechaHoraEnvio ? new Date(record.fechaHoraEnvio).toLocaleString('es-CL') : ''}
@@ -1873,28 +1928,39 @@ function History({ onBack, onOpenConfig }) {
       const token = await getAccessToken(config);
       if (!token) return; // mobile redirect in progress
       const res = await fetch(FILE_URL, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.status === 404) { setRecords([]); setSource('cloud'); setLoading(false); return; }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const b64 = await arrayBufferToBase64(await res.arrayBuffer());
-      const wb  = XLSX.read(b64, { type: 'base64' });
-      const all = [];
-      PLANTS.forEach(p => {
-        const ws = wb.Sheets[p.label];
-        if (!ws) return;
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        if (rows.length < 2) return;
-        const headers = rows[0];
-        rows.slice(1).forEach((row, ri) => {
-          const rec = {};
-          headers.forEach((h, i) => { if (h) rec[h] = row[i] ?? ''; });
-          rec.planta  = p.id;
-          rec.enviado = rec.enviado === 'true' || rec.enviado === true;
-          if (!rec.id) rec.id = `${p.id}_${ri}`;
-          all.push(rec);
+      const cloudRecords = [];
+      if (res.status === 404) {
+        // archivo no existe aún — solo mostrar pendientes locales
+      } else if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      } else {
+        const b64 = await arrayBufferToBase64(await res.arrayBuffer());
+        const wb  = XLSX.read(b64, { type: 'base64' });
+        PLANTS.forEach(p => {
+          const ws = wb.Sheets[p.label];
+          if (!ws) return;
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          if (rows.length < 2) return;
+          const headers = rows[0];
+          rows.slice(1).forEach((row, ri) => {
+            const rec = {};
+            headers.forEach((h, i) => { if (h) rec[h] = row[i] ?? ''; });
+            rec.planta  = p.id;
+            rec.enviado = true;
+            if (!rec.id) rec.id = `cloud_${p.id}_${ri}`;
+            cloudRecords.push(rec);
+          });
         });
-      });
+      }
+
+      // Mezclar con registros locales pendientes (no enviados)
+      const cloudKeys = new Set(cloudRecords.map(r => r.fechaRegistro).filter(Boolean));
+      const localPending = getRecords()
+        .filter(r => !r.enviado && !cloudKeys.has(r.fechaRegistro));
+
+      const all = [...cloudRecords, ...localPending];
       all.sort((a,b) => new Date(b.fechaRegistro||0) - new Date(a.fechaRegistro||0));
-      setRecords(all); setSource('cloud');
+      setRecords(all); setSource('mixed');
     } catch (err) {
       setErrMsg(err.message);
       loadLocal();
@@ -1909,9 +1975,11 @@ function History({ onBack, onOpenConfig }) {
     () => filter==='all' ? records : records.filter(r=>r.planta===filter),
     [records, filter]
   );
-  const pending = source==='local' ? records.filter(r=>!r.enviado).length : 0;
+  const pending = records.filter(r=>!r.enviado).length;
 
-  const sourceLabel = source==='cloud' ? '\u2601 OneDrive' : source==='local' ? '\uD83D\uDCBE Local' : '';
+  const sourceLabel = source==='mixed' ? '\u2601 OneDrive + \uD83D\uDCBE Local'
+    : source==='cloud' ? '\u2601 OneDrive'
+    : source==='local' ? '\uD83D\uDCBE Local' : '';
 
   return (
     <div className="page">
@@ -1972,7 +2040,7 @@ function History({ onBack, onOpenConfig }) {
           <div className="empty-state"><p>No hay registros para mostrar.</p></div>
         ) : (
           filtered.map(r=>(
-            <RecordCard key={r.id} record={r} onRefresh={configOk ? loadCloud : loadLocal}/>
+            <RecordCard key={r.id} record={r} onRefresh={configOk ? loadCloud : loadLocal} config={config}/>
           ))
         )}
       </div>
@@ -1983,14 +2051,172 @@ function History({ onBack, onOpenConfig }) {
 // ════════════════════════════════════════════════════════════════
 // HOME
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// PANEL DE ADMINISTRACIÓN
+// ════════════════════════════════════════════════════════════════
+function AdminPanel({ onBack }) {
+  const [groups,     setGroups]     = useState({});
+  const [loading,    setLoading]    = useState(true);
+  const [errMsg,     setErrMsg]     = useState(null);
+  const [deleting,   setDeleting]   = useState(new Set());
+  const [bulkCounts, setBulkCounts] = useState({});
+
+  const config   = getConfig();
+  const configOk = isConfigOk(config);
+
+  const loadData = async () => {
+    setLoading(true); setErrMsg(null);
+    try {
+      const token = await getAccessToken(config);
+      if (!token) { setLoading(false); return; }
+      const res = await fetch(FILE_URL, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.status === 404) { setGroups({}); setLoading(false); return; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const b64 = await arrayBufferToBase64(await res.arrayBuffer());
+      const wb  = XLSX.read(b64, { type: 'base64' });
+      const newGroups = {};
+      PLANTS.forEach(p => {
+        const ws = wb.Sheets[p.label];
+        if (!ws) return;
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        if (rows.length <= 1) return;
+        const headers = rows[0];
+        const data = rows.slice(1).map(row => {
+          const rec = {};
+          headers.forEach((h, i) => { if (h) rec[h] = row[i] ?? ''; });
+          return rec;
+        });
+        if (data.length > 0) newGroups[p.label] = data;
+      });
+      setGroups(newGroups);
+    } catch (err) { setErrMsg(err.message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { if (configOk) loadData(); else setLoading(false); }, []);
+
+  const handleDelete = async (sheetName, fechaRegistro) => {
+    if (!confirm('\u00bfEst\u00e1s seguro que deseas eliminar este registro?')) return;
+    const key = `${sheetName}_${fechaRegistro}`;
+    setDeleting(prev => new Set([...prev, key]));
+    try {
+      const token = await getAccessToken(config);
+      if (!token) return;
+      await deleteRowsFromExcel(token, sheetName, [fechaRegistro]);
+      await loadData();
+    } catch (err) { alert(`Error al eliminar: ${err.message}`); }
+    finally { setDeleting(prev => { const s = new Set(prev); s.delete(key); return s; }); }
+  };
+
+  const handleBulkDelete = async (sheetName, count) => {
+    const rows = groups[sheetName] || [];
+    const toDelete = rows.slice(-count).map(r => String(r.fechaRegistro ?? ''));
+    if (!toDelete.length) return;
+    if (!confirm(`\u00bfEliminar los \u00faltimos ${count} registro${count>1?'s':''} de ${sheetName}?`)) return;
+    try {
+      const token = await getAccessToken(config);
+      if (!token) return;
+      await deleteRowsFromExcel(token, sheetName, toDelete);
+      await loadData();
+    } catch (err) { alert(`Error: ${err.message}`); }
+  };
+
+  return (
+    <div className="page">
+      <header className="form-header" style={{background:'#1a1a1a'}}>
+        <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
+        <div className="form-header-title">
+          <span className="form-header-label">Administraci&#243;n</span>
+          <span className="form-header-plant">Gesti&#243;n de registros OneDrive</span>
+        </div>
+        <button className="btn-back header-right" onClick={loadData} disabled={loading} type="button">
+          &#8635; Actualizar
+        </button>
+      </header>
+
+      {!configOk&&(
+        <div className="warning-banner">&#9888; OneDrive no configurado. Configure en Ajustes primero.</div>
+      )}
+      {errMsg&&!loading&&(
+        <div className="warning-banner">&#9888; {errMsg}</div>
+      )}
+      {loading&&(
+        <div style={{textAlign:'center',padding:'3rem',color:'var(--text-muted)'}}>
+          <div className="spinner" style={{margin:'0 auto 1rem'}}/>
+          Cargando registros desde OneDrive...
+        </div>
+      )}
+      {!loading&&!errMsg&&Object.keys(groups).length===0&&(
+        <div className="empty-state"><p>No hay registros en OneDrive.</p></div>
+      )}
+
+      {!loading&&Object.entries(groups).map(([sheetName, rows]) => {
+        const plantId = PLANTS.find(p => p.label===sheetName)?.id;
+        const color   = plantId ? PLANT_COLORS[plantId] : '#1e3a5f';
+        const count   = bulkCounts[sheetName] || 1;
+        return (
+          <div key={sheetName} className="admin-section">
+            <div className="section-header" style={{background:color,color:'#fff'}}>
+              {sheetName} &mdash; {rows.length} registro{rows.length!==1?'s':''}
+            </div>
+            <div className="admin-bulk-bar">
+              <span>Eliminar \u00faltimos</span>
+              <select value={count}
+                onChange={e=>setBulkCounts(prev=>({...prev,[sheetName]:Number(e.target.value)}))}>
+                {[1,5,10].map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+              <button className="btn-del-bulk" type="button"
+                onClick={()=>handleBulkDelete(sheetName, count)}>
+                &#128465; Eliminar
+              </button>
+            </div>
+            <div className="admin-table">
+              <div className="admin-table-head">
+                <span>Fecha</span>
+                <span>Turno</span>
+                <span>SOP</span>
+                <span>Estado</span>
+                <span>Enviado</span>
+                <span></span>
+              </div>
+              {rows.map((row, i) => {
+                const key  = `${sheetName}_${row.fechaRegistro}`;
+                const busy = deleting.has(key);
+                return (
+                  <div key={i} className="admin-table-row">
+                    <span>{row.fecha||'—'}</span>
+                    <span>T{row.turno||'—'}</span>
+                    <span>{row.sop||'—'}</span>
+                    <span>{row.estado||'—'}</span>
+                    <span style={{fontSize:'.72rem',color:'var(--text-muted)'}}>
+                      {row.fechaHoraEnvio ? new Date(row.fechaHoraEnvio).toLocaleString('es-CL') : '—'}
+                    </span>
+                    <button className="btn-del-row" type="button" disabled={busy}
+                      title="Eliminar registro"
+                      onClick={()=>handleDelete(sheetName, String(row.fechaRegistro??''))}>
+                      {busy ? '…' : '&#128465;'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
   const [records] = useState(()=>getRecords());
   const config    = getConfig();
   const configOk  = isConfigOk(config);
 
-  const getCount   = id => records.filter(r=>r.planta===id).length;
+  const getByPlant  = id => records.filter(r=>r.planta===id);
+  const getSent     = id => getByPlant(id).filter(r=>r.enviado).length;
+  const getPending  = id => getByPlant(id).filter(r=>!r.enviado).length;
   const getLastDate = id => {
-    const pr = records.filter(r=>r.planta===id).sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro));
+    const pr = getByPlant(id).sort((a,b)=>new Date(b.fechaRegistro)-new Date(a.fechaRegistro));
     return pr.length ? `${pr[0].fecha} T${pr[0].turno}` : null;
   };
 
@@ -2033,7 +2259,10 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
               <div className="plant-info">
                 <span className="plant-name">{p.label}</span>
                 <span className="plant-meta">
-                  {getCount(p.id)} registro{getCount(p.id)!==1?'s':''}
+                  {getSent(p.id)>0&&<>&#9989; {getSent(p.id)} enviado{getSent(p.id)!==1?'s':''}</>}
+                  {getSent(p.id)>0&&getPending(p.id)>0&&<> &middot; </>}
+                  {getPending(p.id)>0&&<span style={{color:'#b45309'}}>&#128336; {getPending(p.id)} pendiente{getPending(p.id)!==1?'s':''}</span>}
+                  {getSent(p.id)===0&&getPending(p.id)===0&&'Sin registros'}
                   {getLastDate(p.id)&&<> &middot; {getLastDate(p.id)}</>}
                 </span>
               </div>
@@ -2041,7 +2270,14 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
             </button>
           ))}
         </div>
-        <div className="home-total">{records.length} registro{records.length!==1?'s':''} en total</div>
+        <div className="home-total">
+          {records.length} registro{records.length!==1?'s':''} &mdash;&nbsp;
+          &#9989; {records.filter(r=>r.enviado).length} enviados &middot;&nbsp;
+          &#128336; {records.filter(r=>!r.enviado).length} pendientes
+        </div>
+        <button className="btn-admin-home" onClick={onOpenAdmin} type="button">
+          &#9881; Admin
+        </button>
       </div>
     </div>
   );
@@ -2050,7 +2286,7 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
 // ════════════════════════════════════════════════════════════════
 // MODAL DE CONTRASEÑA (Ajustes)
 // ════════════════════════════════════════════════════════════════
-function PasswordModal({ onSuccess, onCancel }) {
+function PasswordModal({ onSuccess, onCancel, title='&#128274;\u00a0 Ajustes', subtitle='Ingrese la contrasena de administrador para acceder a esta seccion.' }) {
   const [pwd,   setPwd]   = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
@@ -2071,8 +2307,8 @@ function PasswordModal({ onSuccess, onCancel }) {
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-box">
-        <div className="modal-title">&#128274;&nbsp; Ajustes</div>
-        <p className="modal-sub">Ingrese la contrasena de administrador para acceder a esta seccion.</p>
+        <div className="modal-title">{title}</div>
+        <p className="modal-sub">{subtitle}</p>
         <form onSubmit={handleSubmit}>
           <div className={`field${error?' field-error':''}`} style={{marginBottom:'1.1rem'}}>
             <label htmlFor="modal-pwd">Contrasena</label>
@@ -2158,22 +2394,34 @@ function App() {
     navigate('home');
   }, [navigate, showToast]);
 
-  const [passModal, setPassModal] = useState(false);
+  const [passModal,  setPassModal]  = useState(false);
+  const [adminModal, setAdminModal] = useState(false);
 
   const goHome    = useCallback(() => { setReviewData(null); setEditData(null); navigate('home'); }, [navigate]);
   const goHistory = useCallback(() => navigate('history'), [navigate]);
   const goConfig  = useCallback(() => setPassModal(true),  []);
+  const goAdmin   = useCallback(() => setAdminModal(true), []);
 
-  const handlePassSuccess = useCallback(() => { setPassModal(false); navigate('config'); }, [navigate]);
-  const handlePassCancel  = useCallback(() => setPassModal(false), []);
+  const handlePassSuccess  = useCallback(() => { setPassModal(false);  navigate('config'); }, [navigate]);
+  const handlePassCancel   = useCallback(() => setPassModal(false),  []);
+  const handleAdminSuccess = useCallback(() => { setAdminModal(false); navigate('admin');  }, [navigate]);
+  const handleAdminCancel  = useCallback(() => setAdminModal(false), []);
 
   return (
     <div>
-      {passModal&&<PasswordModal onSuccess={handlePassSuccess} onCancel={handlePassCancel}/>}
+      {passModal&&(
+        <PasswordModal onSuccess={handlePassSuccess} onCancel={handlePassCancel}/>
+      )}
+      {adminModal&&(
+        <PasswordModal
+          title="&#9881;\u00a0 Administraci&#243;n"
+          subtitle="Ingrese la contrase\u00f1a para acceder al panel de administraci\u00f3n."
+          onSuccess={handleAdminSuccess} onCancel={handleAdminCancel}/>
+      )}
       {toast&&<div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
 
       {view==='home'&&(
-        <Home onOpenForm={openForm} onOpenHistory={goHistory} onOpenConfig={goConfig}/>
+        <Home onOpenForm={openForm} onOpenHistory={goHistory} onOpenConfig={goConfig} onOpenAdmin={goAdmin}/>
       )}
       {view==='form'&&activePlant&&(
         <ShiftForm plant={activePlant} onBack={goHome} onReview={handleReview} initialData={editData}/>
@@ -2187,6 +2435,9 @@ function App() {
       )}
       {view==='config'&&(
         <ConfigScreen onBack={()=>navigate(reviewData?'review':'home')}/>
+      )}
+      {view==='admin'&&(
+        <AdminPanel onBack={goHome}/>
       )}
     </div>
   );
