@@ -2207,7 +2207,7 @@ function AdminPanel({ onBack }) {
   );
 }
 
-function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
+function Home({ onOpenForm, onOpenHistory, onOpenConfig, onOpenAdmin }) {
   const [records] = useState(()=>getRecords());
   const config    = getConfig();
   const configOk  = isConfigOk(config);
