@@ -804,8 +804,9 @@ async function arrayBufferToBase64(buf) {
 }
 
 const FOLDER_NAME = 'Consolidado.CT.2026';
-const FILE_URL    = `https://graph.microsoft.com/v1.0/me/drive/root:/${FOLDER_NAME}/Cierres_de_Turno.xlsx:/content`;
-const FOLDER_URL  = 'https://graph.microsoft.com/v1.0/me/drive/root/children';
+const TARGET_USER = 'f0ab6540-bf16-4886-a208-9c52e16e42e8';
+const FILE_URL    = `https://graph.microsoft.com/v1.0/users/${TARGET_USER}/drive/root:/${FOLDER_NAME}/Cierres_de_Turno.xlsx:/content`;
+const FOLDER_URL  = `https://graph.microsoft.com/v1.0/users/${TARGET_USER}/drive/root/children`;
 
 // Núcleo del envío — recibe token ya obtenido
 async function sendToOneDrive(token, record) {
