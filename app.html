@@ -1062,7 +1062,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
       <button type="submit" className="btn-save" style={{background:color}}>Revisar datos &#8250;</button>
     </div>
   );
-  const SecGeneral = ({ withMat=true }) => (
+  const SecGeneral = ({ withMat=true } = {}) => (
     <SecCard title="Informacion General">
       <div className="form-grid">
         {f('fecha','Fecha',null,'date')}
