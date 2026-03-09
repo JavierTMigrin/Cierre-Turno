@@ -1151,7 +1151,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
   );
   const LastBanner = () => lastRec ? (
     <div className="last-record-banner">
-      <strong>Ultimo:</strong> {lastRec.fecha} &mdash; T{lastRec.turno} &mdash; {lastRec.sop}
+      <strong>Ultimo:</strong> {lastRec.fecha} — T{lastRec.turno} — {lastRec.sop}
     </div>
   ) : null;
   const ErrSummary = () => Object.keys(errors).length > 0 ? (
@@ -1493,7 +1493,7 @@ function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
           &#8592; Editar
         </button>
         <div className="form-header-title">
-          <span className="form-header-label">Revision de datos &mdash; {PLANT_LABELS[plant]}</span>
+          <span className="form-header-label">Revision de datos — {PLANT_LABELS[plant]}</span>
           <span className="form-header-plant">Confirme antes de enviar</span>
         </div>
       </header>
@@ -1727,8 +1727,8 @@ function ConfigScreen({ onBack }) {
               {redirectUri}
             </span><br/>
             <span style={{fontSize:'.75rem'}}>
-              En Azure AD &rarr; Registros de aplicaciones &rarr; su app &rarr;
-              Autenticacion &rarr; Agregar una plataforma &rarr; Aplicacion de pagina unica (SPA).
+              En Azure AD → Registros de aplicaciones → su app →
+              Autenticacion → Agregar una plataforma → Aplicacion de pagina unica (SPA).
             </span>
           </div>
 
@@ -1833,7 +1833,7 @@ function RecordCard({ record, onRefresh, config: configProp }) {
           <span className="record-plant-dot" style={{background:color}}/>
           <div>
             <span className="record-plant-name">{PLANT_LABELS[record.planta]||record.planta}</span>
-            <span className="record-meta">{record.fecha} &middot; Turno {record.turno} &middot; {record.sop}</span>
+            <span className="record-meta">{record.fecha} · Turno {record.turno} · {record.sop}</span>
           </div>
         </div>
         <div className="record-card-right">
@@ -1891,7 +1891,7 @@ function RecordCard({ record, onRefresh, config: configProp }) {
               <div className="detail-footer sent">
                 &#9989; Enviado a OneDrive: {record.fechaHoraEnvio ? new Date(record.fechaHoraEnvio).toLocaleString('es-CL') : ''}
               </div>
-              <div className="immutable-badge">&#128274; Registro inmutable &mdash; enviado y bloqueado</div>
+              <div className="immutable-badge">&#128274; Registro inmutable — enviado y bloqueado</div>
             </>
           ) : (
             record.errorEnvio&&(
@@ -1986,7 +1986,7 @@ function History({ onBack, onOpenConfig }) {
       <header className="form-header">
         <button className="btn-back" onClick={onBack} type="button">&#8592; Volver</button>
         <div className="form-header-title">
-          <span className="form-header-label">Historial &nbsp;{sourceLabel}</span>
+          <span className="form-header-label">Historial  {sourceLabel}</span>
           <span className="form-header-plant">Registros guardados</span>
         </div>
         <div className="header-right">
@@ -2004,7 +2004,7 @@ function History({ onBack, onOpenConfig }) {
       )}
       {errMsg&&(
         <div className="warning-banner">
-          &#9888; No se pudo cargar desde OneDrive: {errMsg} &mdash; Mostrando registros locales.
+          &#9888; No se pudo cargar desde OneDrive: {errMsg} — Mostrando registros locales.
         </div>
       )}
 
@@ -2157,7 +2157,7 @@ function AdminPanel({ onBack }) {
         return (
           <div key={sheetName} className="admin-section">
             <div className="section-header" style={{background:color,color:'#fff'}}>
-              {sheetName} &mdash; {rows.length} registro{rows.length!==1?'s':''}
+              {sheetName} — {rows.length} registro{rows.length!==1?'s':''}
             </div>
             <div className="admin-bulk-bar">
               <span>Eliminar \u00faltimos</span>
@@ -2227,7 +2227,7 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
         <div className="home-header-divider"/>
         <div className="home-header-text">
           <h1>Cierre de Turno</h1>
-          <p>Operaciones Centro y Sur Migrin SA &mdash; Seleccione una planta</p>
+          <p>Operaciones Centro y Sur Migrin SA — Seleccione una planta</p>
         </div>
       </header>
 
@@ -2260,10 +2260,10 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
                 <span className="plant-name">{p.label}</span>
                 <span className="plant-meta">
                   {getSent(p.id)>0&&<>&#9989; {getSent(p.id)} enviado{getSent(p.id)!==1?'s':''}</>}
-                  {getSent(p.id)>0&&getPending(p.id)>0&&<> &middot; </>}
+                  {getSent(p.id)>0&&getPending(p.id)>0&&' · '}
                   {getPending(p.id)>0&&<span style={{color:'#b45309'}}>&#128336; {getPending(p.id)} pendiente{getPending(p.id)!==1?'s':''}</span>}
                   {getSent(p.id)===0&&getPending(p.id)===0&&'Sin registros'}
-                  {getLastDate(p.id)&&<> &middot; {getLastDate(p.id)}</>}
+                  {getLastDate(p.id)&&(' · '+getLastDate(p.id))}
                 </span>
               </div>
               <span className="plant-arrow">&#8250;</span>
@@ -2271,8 +2271,8 @@ function Home({ onOpenForm, onOpenHistory, onOpenConfig }) {
           ))}
         </div>
         <div className="home-total">
-          {records.length} registro{records.length!==1?'s':''} &mdash;&nbsp;
-          &#9989; {records.filter(r=>r.enviado).length} enviados &middot;&nbsp;
+          {records.length} registro{records.length!==1?'s':''} {'—'}{' '}
+          &#9989; {records.filter(r=>r.enviado).length} enviados {'·'}{' '}
           &#128336; {records.filter(r=>!r.enviado).length} pendientes
         </div>
         <button className="btn-admin-home" onClick={onOpenAdmin} type="button">
