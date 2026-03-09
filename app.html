@@ -808,8 +808,41 @@ const FOLDER_NAME = 'Consolidado.CT.2026';
 const FILE_URL    = `https://graph.microsoft.com/v1.0/me/drive/root:/${FOLDER_NAME}/Cierres_de_Turno.xlsx:/content`;
 const FOLDER_URL  = 'https://graph.microsoft.com/v1.0/me/drive/root/children';
 
+// Decodifica el JWT para obtener los scopes del token
+function getTokenScopes(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return (payload.scp || payload.roles || '').split(' ').filter(Boolean);
+  } catch { return []; }
+}
+
 // Núcleo del envío — recibe token ya obtenido
 async function sendToOneDrive(token, record) {
+  // Diagnóstico: verificar scopes y obtener email del usuario
+  const scopes = getTokenScopes(token);
+  const hasFiles = scopes.some(s => /files\.readwrite/i.test(s));
+
+  let userEmail = '';
+  try {
+    const meRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (meRes.ok) {
+      const me = await meRes.json();
+      userEmail = me.userPrincipalName || me.mail || me.displayName || '';
+    }
+  } catch (_) {}
+
+  if (!hasFiles) {
+    throw new Error(
+      `Sin permiso Files.ReadWrite.\n` +
+      `Usuario: ${userEmail || 'desconocido'}\n` +
+      `Scopes en token: [${scopes.join(', ') || 'ninguno'}]\n` +
+      `Solución: vaya a Ajustes y use "Re-autorizar permisos".`
+    );
+  }
+
+  const diagSuffix = ` | Usuario: ${userEmail} | Scopes: [${scopes.join(', ')}]`;
   const authHdr = { 'Authorization': `Bearer ${token}` };
 
   let base64;
@@ -825,7 +858,10 @@ async function sendToOneDrive(token, record) {
     base64 = crearLibroNuevo();
   } else {
     const err = await fileRes.json().catch(() => ({}));
-    throw new Error(`Error descargando archivo (${fileRes.status}): ${err.error?.message || ''}`);
+    throw new Error(
+      `Error ${fileRes.status} descargando archivo: ${err.error?.message || err.error?.code || 'sin detalle'}` +
+      diagSuffix
+    );
   }
 
   const sheetName = PLANT_LABELS[record.planta] || record.planta;
@@ -842,7 +878,10 @@ async function sendToOneDrive(token, record) {
   });
   if (!uploadRes.ok) {
     const err = await uploadRes.json().catch(() => ({}));
-    throw new Error(`Error subiendo archivo (${uploadRes.status}): ${err.error?.message || ''}`);
+    throw new Error(
+      `Error ${uploadRes.status} subiendo archivo: ${err.error?.message || err.error?.code || 'sin detalle'}` +
+      diagSuffix
+    );
   }
 }
 
@@ -1312,7 +1351,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
 // PANTALLA DE REVISIÓN PREVIA
 // ════════════════════════════════════════════════════════════════
 function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
-  // status: idle | sending | success | error | noconfig
+  // status: idle | sending | success | saved | error | noconfig
   const [status,      setStatus]     = useState('idle');
   const [errorMsg,    setErrorMsg]   = useState('');
   const [savedRecord, setSavedRecord]= useState(null);
@@ -1352,12 +1391,35 @@ function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
     if (savedRecord) await doSend(savedRecord);
   };
 
-  const handleSaveLocal = () => {
-    if (!savedRecord) {
-      const r = saveRecord({ ...formData, planta:plant, errorEnvio:'Guardado solo localmente' });
-      setSavedRecord(r);
+  const handleReauth = async () => {
+    setStatus('sending');
+    try {
+      const app = getMsalApp(config);
+      const r   = await app.loginPopup({ scopes: SP_SCOPES, prompt: 'consent' });
+      if (r?.accessToken) {
+        await sendToOneDrive(r.accessToken, savedRecord);
+        markAsSent(savedRecord.id, new Date().toISOString());
+        setStatus('success');
+        setTimeout(() => onConfirmed('sent'), 2200);
+      }
+    } catch (err) {
+      markAsError(savedRecord.id, err.message);
+      setStatus('error');
+      setErrorMsg(err.message);
     }
-    onConfirmed('local');
+  };
+
+  const handleSaveLocal = () => {
+    let rec = savedRecord;
+    if (!rec) {
+      rec = saveRecord({ ...formData, planta:plant });
+      setSavedRecord(rec);
+    } else {
+      // limpiar error previo — queda como pendiente de envío
+      updateRecord(rec.id, { errorEnvio: null });
+    }
+    setStatus('saved');
+    setTimeout(() => onConfirmed('local'), 1800);
   };
 
   return (
@@ -1416,12 +1478,21 @@ function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
           </div>
         </div>
       )}
+      {status==='saved'&&(
+        <div className="send-status-box send-status-success">
+          <span className="send-status-icon">&#9989;</span>
+          <div className="send-status-body">
+            <div className="send-status-title">&#160;Guardado localmente</div>
+            <div className="send-status-detail">El registro queda pendiente de envío. Puede reintentarlo desde el Historial.</div>
+          </div>
+        </div>
+      )}
       {status==='error'&&(
         <div className="send-status-box send-status-error">
           <span className="send-status-icon">&#10060;</span>
           <div className="send-status-body">
             <div className="send-status-title">&#160;Error al enviar a OneDrive</div>
-            <div className="send-status-detail">{errorMsg}</div>
+            <pre className="send-status-detail" style={{whiteSpace:'pre-wrap',wordBreak:'break-word',fontFamily:'inherit'}}>{errorMsg}</pre>
           </div>
         </div>
       )}
@@ -1445,17 +1516,25 @@ function ReviewScreen({ plant, formData, onEdit, onConfirmed }) {
                   &#10003;&#160;Confirmar y Enviar
                 </button>
               : <button type="button" className="btn-save" style={{background:'#718096'}} onClick={handleSaveLocal}>
-                  Guardar localmente
+                  &#128190; Guardar localmente
                 </button>
             }
           </>
         )}
         {status==='error'&&(
           <>
-            <button type="button" className="btn-cancel" onClick={handleSaveLocal}>Guardar local</button>
-            <button type="button" className="btn-save" style={{background:color}} onClick={handleRetry}>
-              &#8635;&#160;Reintentar envio
+            <button type="button" className="btn-cancel" onClick={handleSaveLocal}>
+              &#128190; Guardar local
             </button>
+            <button type="button" className="btn-save" style={{background:color}} onClick={handleRetry}>
+              &#8635;&#160;Reintentar
+            </button>
+            {/403|Files\.ReadWrite|permiso/i.test(errorMsg) && (
+              <button type="button" className="btn-save" style={{background:'#805ad5',marginTop:'.5rem',flex:'1 1 100%'}}
+                onClick={handleReauth}>
+                &#128275; Re-autorizar permisos
+              </button>
+            )}
           </>
         )}
         {status==='sending'&&(
