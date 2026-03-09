@@ -307,13 +307,18 @@
     .detail-footer.sent    { color: var(--success); font-weight: 600; }
     .detail-footer.pending { color: var(--text-muted); }
     .detail-error-box { margin-top: .75rem; padding: .65rem .925rem; background: var(--error-bg); border-radius: var(--radius-sm); border: 1px solid var(--error-border); font-size: .8rem; color: var(--error); }
-    .btn-retry {
-      margin-top: .5rem; background: var(--primary); color: #fff; border: none;
-      padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 700;
-      cursor: pointer; transition: background var(--transition), transform var(--transition);
+    .record-pending-bar {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      padding: .5rem 1rem; background: #fffbeb; border-top: 1px solid #fde68a;
     }
-    .btn-retry:hover    { background: var(--primary-dark); transform: translateY(-1px); }
-    .btn-retry:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .record-pending-bar > span { flex: 1; min-width: 0; }
+    .btn-retry {
+      background: var(--primary); color: #1a1a1a; border: none;
+      padding: .4rem .9rem; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 700;
+      cursor: pointer; transition: background var(--transition); white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-retry:hover    { background: var(--primary-dark); }
+    .btn-retry:disabled { opacity: .55; cursor: not-allowed; }
     .immutable-badge { margin-top: .5rem; font-size: .75rem; color: var(--success); font-weight: 600; }
 
     /* ── Estado vacío ── */
@@ -398,6 +403,7 @@ const FIELD_LABELS = {
   detencionMantencion2B:'Det. Mant. 2 H.B', tiempoDetencionMantencion2B:'Tiempo Det.Mant.2 H.B (hrs)',
   // Secado P — silos
   silo1:'Silo 1', silo2:'Silo 2', silo3:'Silo 3', silo4:'Silo 4', silo5:'Silo 5', silo6:'Silo 6',
+  sensorFalla:'Sensor de Falla',
   // Secado T
   horometroIman:'Horometro Iman', pesometroIman:'Pesometro Iman',
   horometroInicialFierrillo:'Horometro Inicial Fierrillo', horometroFinalFierrillo:'Horometro Final Fierrillo',
@@ -448,14 +454,14 @@ const getReviewSections = plant => {
   ];
   if (plant === 'lavadoT') return [
     ...base, horas,
-    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','kilosFloculante','consumoElectricoKW'] },
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','kilosFloculante','consumoElectricoKW','sensorFalla'] },
     { title:'Produccion',       fields:['pesometroProduccion','flujo'] },
     detOp, detMnt, ...end,
   ];
   if (plant === 'secadoT') return [
     { title:'Informacion General', fields:['fecha','turno','sop'] },
     horas,
-    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','consumoGas','consumoElectrico'] },
+    { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','consumoGas','consumoElectrico','sensorFalla'] },
     { title:'Iman',      fields:['horometroIman','pesometroIman'] },
     { title:'Fierrillo', fields:['horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo'] },
     detOp, detMnt, ...end,
@@ -485,6 +491,7 @@ const EXCEL_COLS = [
   'detencionOperacion1B','tiempoDetencionOperacion1B','detencionOperacion2B','tiempoDetencionOperacion2B',
   'detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B',
   'silo1','silo2','silo3','silo4','silo5','silo6',
+  'sensorFalla',
   'horometroIman','pesometroIman',
   'horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo',
   'estado','creadoPor','fechaRegistro','fechaHoraEnvio',
@@ -591,10 +598,10 @@ const getInitialState = plant => {
     consumoElectricoKW:'',
   };
   if (plant === 'lavadoT') return { ...base, tipoMaterial:'', ...horas,
-    horometroPlanta:'', pesometroAlimentacion:'', kilosFloculante:'', consumoElectricoKW:'',
+    horometroPlanta:'', pesometroAlimentacion:'', kilosFloculante:'', consumoElectricoKW:'', sensorFalla:'',
     pesometroProduccion:'', flujo:'', ...det2 };
   if (plant === 'secadoT') return { ...base, ...horas,
-    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', consumoGas:'', consumoElectrico:'',
+    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', consumoGas:'', consumoElectrico:'', sensorFalla:'',
     horometroIman:'', pesometroIman:'',
     horometroInicialFierrillo:'', horometroFinalFierrillo:'', pesometroInicialFierrillo:'', pesometroFinalFierrillo:'',
     ...det2 };
@@ -688,6 +695,7 @@ const validate = (data, plant, lr) => {
     numReq('consumoElectricoKW','el consumo electrico');
     mono('pesometroProduccion','el pesometro de produccion');
     numReq('flujo','el flujo');
+    if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   } else if (plant === 'secadoT') {
     horasF('horasProgramadas','las horas programadas');
@@ -704,6 +712,7 @@ const validate = (data, plant, lr) => {
     numReq('horometroFinalFierrillo','el horometro final fierrillo');
     numReq('pesometroInicialFierrillo','el pesometro inicial fierrillo');
     numReq('pesometroFinalFierrillo','el pesometro final fierrillo');
+    if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   }
   return e;
@@ -1288,6 +1297,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
             {num('kilosFloculante','Kilos de Floculante')}
             {num('consumoElectricoKW','Consumo Electrico (kW)')}
+            {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Produccion">
@@ -1321,6 +1331,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('horometroGenerador','Horometro Generador',true)}
             {num('consumoGas','Consumo Gas')}
             {num('consumoElectrico','Consumo Electrico')}
+            {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Iman">
@@ -1758,7 +1769,7 @@ function RecordCard({ record, onRefresh }) {
     ? <span className="badge badge-sent">&#9989; OneDrive</span>
     : record.errorEnvio
       ? <span className="badge badge-error">&#10060; Error envio</span>
-      : <span className="badge badge-pending">&#128190; Local</span>;
+      : <span className="badge badge-pending">&#128336; Pendiente</span>;
 
   return (
     <div className="record-card" style={{borderLeftColor:color}}>
@@ -1776,6 +1787,30 @@ function RecordCard({ record, onRefresh }) {
           <span className="expand-icon">{expanded?'▲':'▼'}</span>
         </div>
       </button>
+
+      {/* Barra de envío — siempre visible para registros pendientes */}
+      {!record.enviado&&(
+        <div className="record-pending-bar">
+          {retryMsg&&(
+            <span style={{fontSize:'.8rem',fontWeight:600,color:retryMsg.ok?'var(--success)':'var(--error)'}}>
+              {retryMsg.ok?'✅':'❌'} {retryMsg.text}
+            </span>
+          )}
+          {!retryMsg&&record.errorEnvio&&(
+            <span style={{fontSize:'.78rem',color:'var(--error)',flex:1}}>
+              &#10060; {record.errorEnvio.split('\n')[0]}
+            </span>
+          )}
+          {!retryMsg&&!record.errorEnvio&&(
+            <span style={{fontSize:'.78rem',color:'var(--text-muted)'}}>
+              Guardado: {new Date(record.fechaRegistro).toLocaleString('es-CL')}
+            </span>
+          )}
+          <button className="btn-retry" onClick={handleRetry} disabled={retrying} type="button">
+            {retrying ? 'Enviando...' : '\u21BB Enviar a OneDrive'}
+          </button>
+        </div>
+      )}
 
       {expanded&&(
         <div className="record-detail">
@@ -1804,26 +1839,12 @@ function RecordCard({ record, onRefresh }) {
               <div className="immutable-badge">&#128274; Registro inmutable &mdash; enviado y bloqueado</div>
             </>
           ) : (
-            <>
-              <div className="detail-footer pending">
-                Guardado localmente: {new Date(record.fechaRegistro).toLocaleString('es-CL')}
-              </div>
+            record.errorEnvio&&(
               <div className="detail-error-box">
-                {record.errorEnvio
-                  ? <><strong>Ultimo error:</strong> {record.errorEnvio}<br/></>
-                  : 'Este registro aun no ha sido enviado a OneDrive.'
-                }
-                {retryMsg&&(
-                  <div style={{marginTop:'.35rem',fontWeight:600,color:retryMsg.ok?'var(--success)':'var(--error)'}}>
-                    {retryMsg.ok?'✅':'❌'} {retryMsg.text}
-                  </div>
-                )}
-                <button className="btn-retry" onClick={handleRetry}
-                  disabled={retrying||record.enviado} type="button">
-                  {retrying ? 'Enviando...' : '&#8635; Enviar a OneDrive'}
-                </button>
+                <strong>Ultimo error:</strong>
+                <pre style={{whiteSpace:'pre-wrap',wordBreak:'break-word',fontFamily:'inherit',margin:'.25rem 0 0',fontSize:'.8rem'}}>{record.errorEnvio}</pre>
               </div>
-            </>
+            )
           )}
         </div>
       )}
