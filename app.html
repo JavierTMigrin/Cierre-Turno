@@ -439,7 +439,7 @@ const FIELD_LABELS = {
   horometroIman:'Horometro Iman', pesometroIman:'Pesometro Iman',
   horometroInicialFierrillo:'Horometro Inicial Fierrillo', horometroFinalFierrillo:'Horometro Final Fierrillo',
   pesometroInicialFierrillo:'Pesometro Inicial Fierrillo', pesometroFinalFierrillo:'Pesometro Final Fierrillo',
-  estado:'Estado', creadoPor:'Creado Por',
+  estado:'Estado', creadoPor:'Creado Por', vdfHz:'VDF (Hz)',
 };
 
 // Secciones para pantalla de revisión (por planta)
@@ -506,7 +506,7 @@ const EXCEL_COLS = [
   'horasProgramadas','horasMantenimientoProgramado',
   'horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador',
   'kilosFloculante','bolsasFloculante','consumoElectricoKW','consumoGas','consumoElectrico',
-  'odometroPetroleo',
+  'odometroPetroleo','vdfHz',
   'detencionOperacion1','tiempoDetencionOperacion1',
   'detencionOperacion2','tiempoDetencionOperacion2',
   'detencionMantencion1','tiempoDetencionMantencion1',
@@ -592,7 +592,7 @@ const isNum = v => v!==''&&v!==null&&v!==undefined&&!isNaN(Number(v));
 
 const getInitialState = plant => {
   const today = new Date().toISOString().slice(0,10);
-  const base  = { fecha:today, turno:'', sop:'', estado:'En revision', creadoPor:'' };
+  const base  = { fecha:today, turno:'', sop:'', estado:'Cerrado' };
   const det2  = {
     detencionOperacion1:'', tiempoDetencionOperacion1:'',
     detencionOperacion2:'', tiempoDetencionOperacion2:'',
@@ -602,11 +602,11 @@ const getInitialState = plant => {
   const horas = { horasProgramadas:'', horasMantenimientoProgramado:'' };
 
   if (plant === 'arenas') return { ...base, tipoMaterial:'', ...horas,
-    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', kilosFloculante:'',
+    horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', kilosFloculante:'', vdfHz:'',
     pesometroProduccion:'', flujo:'', numeroBolasM1:'', numeroBolasM2:'', ...det2 };
   if (plant === 'cuarzo') return { ...base, tipoMaterial:'', ...horas,
     horometroPlanta:'', pesometroAlimentacion:'', litrosPetroleo:'', horometroGenerador:'', kilosFloculante:'',
-    horometroVSI:'', litrosPetroleoVSI:'', odometroPetroleo:'',
+    horometroVSI:'', litrosPetroleoVSI:'', odometroPetroleo:'', vdfHz:'',
     pesometroProduccionCuarzo:'', pesometroProduccionCompacta:'', ...det2 };
   if (plant === 'lavadoP') return { ...base, tipoMaterial:'', ...horas,
     horometroPlanta:'', pesometroAlimentacion:'', bolsasFloculante:'', consumoElectricoKW:'', ...det2 };
@@ -644,7 +644,6 @@ const validate = (data, plant, lr) => {
   if (!data.fecha) e.fecha='La fecha es obligatoria';
   if (!data.turno) e.turno='Seleccione un turno';
   if (!data.sop)   e.sop='Seleccione el SOP';
-  if (!data.creadoPor?.trim()) e.creadoPor='Ingrese el nombre del operador';
   if (MAT_BY_PLANT[plant] !== null && !data.tipoMaterial) e.tipoMaterial='Seleccione el tipo de material';
 
   const numReq = (field, label) => { if (!isNum(data[field])) e[field]=`Ingrese ${label}`; };
@@ -705,7 +704,7 @@ const validate = (data, plant, lr) => {
     mono('horometroPlanta','el horometro de planta');
     mono('pesometroAlimentacion','el pesometro de alimentacion');
     numReq('bolsasFloculante','las bolsas de floculante');
-    numReq('consumoElectricoKW','el consumo electrico');
+    mono('consumoElectricoKW','el consumo electrico (kW)');
     detPairs();
   } else if (plant === 'secadoP') {
     ['A','B'].forEach(sfx => {
@@ -713,17 +712,17 @@ const validate = (data, plant, lr) => {
       horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
       mono('horometroPlanta'+sfx,'el horometro de planta horno '+sfx);
       mono('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx);
-      numReq('consumoGas'+sfx,'el consumo de gas horno '+sfx);
+      mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
-    numReq('consumoElectricoKW','el consumo electrico');
+    mono('consumoElectricoKW','el consumo electrico (kW)');
   } else if (plant === 'lavadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
     mono('horometroPlanta','el horometro de planta');
     mono('pesometroAlimentacion','el pesometro de alimentacion');
     numReq('kilosFloculante','los kilos de floculante');
-    numReq('consumoElectricoKW','el consumo electrico');
+    mono('consumoElectricoKW','el consumo electrico (kW)');
     mono('pesometroProduccion','el pesometro de produccion');
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
@@ -735,8 +734,8 @@ const validate = (data, plant, lr) => {
     mono('pesometroAlimentacion','el pesometro de alimentacion');
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
-    numReq('consumoGas','el consumo de gas');
-    numReq('consumoElectrico','el consumo electrico');
+    mono('consumoGas','el consumo de gas');
+    mono('consumoElectrico','el consumo electrico');
     mono('horometroIman','el horometro iman');
     mono('pesometroIman','el pesometro iman');
     numReq('horometroInicialFierrillo','el horometro inicial fierrillo');
@@ -1181,14 +1180,6 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
       </div>
     </SecCard>
   );
-  const SecEstado = () => (
-    <SecCard title="Estado del Registro">
-      <div className="form-grid">
-        {s('estado','Estado',ESTADO_OPTIONS)}
-        {f('creadoPor','Creado Por',null,'text',{placeholder:'Nombre del operador'})}
-      </div>
-    </SecCard>
-  );
 
   // ── ARENAS ──────────────────────────────────────────────────────
   if (plant === 'arenas') return (
@@ -1205,6 +1196,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
             {num('kilosFloculante','Kilos de Floculante')}
+            {f('vdfHz','VDF (Hz)',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Produccion">
@@ -1217,7 +1209,6 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        {SecEstado()}
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1242,6 +1233,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('horometroVSI','Horometro VSI',true)}
             {num('litrosPetroleoVSI','Litros Petroleo VSI')}
             {num('odometroPetroleo','Odometro Petroleo')}
+            {f('vdfHz','VDF (Hz)',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Produccion Cuarzo">
@@ -1252,7 +1244,6 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        {SecEstado()}
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1272,12 +1263,11 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('horometroPlanta','Horometro Planta',true)}
             {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
             {num('bolsasFloculante','Bolsas de Floculante')}
-            {num('consumoElectricoKW','Consumo Electrico (kW)')}
+            {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
           </div>
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        {SecEstado()}
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1303,7 +1293,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title={`${label} — Consumo Gas`}>
           <div className="form-grid">
-            {f('consumoGas'+sfx,'Consumo Gas',null,'number')}
+            {f('consumoGas'+sfx,'Consumo Gas',lastVal('consumoGas'+sfx),'number')}
           </div>
         </SecCard>
         {calcDetBanner(sfx)}
@@ -1325,10 +1315,9 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
           </SecCard>
           <SecCard title="Consumo Electrico">
             <div className="form-grid">
-              {num('consumoElectricoKW','Consumo Electrico (kW)')}
+              {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
             </div>
           </SecCard>
-          {SecEstado()}
           {ErrSummary()}
           {FormActions()}
         </form>
@@ -1349,7 +1338,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('horometroPlanta','Horometro Planta',true)}
             {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
             {num('kilosFloculante','Kilos de Floculante')}
-            {num('consumoElectricoKW','Consumo Electrico (kW)')}
+            {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
@@ -1361,7 +1350,6 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        {SecEstado()}
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1382,8 +1370,8 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
-            {num('consumoGas','Consumo Gas')}
-            {num('consumoElectrico','Consumo Electrico')}
+            {num('consumoGas','Consumo Gas',true)}
+            {num('consumoElectrico','Consumo Electrico',true)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
@@ -1403,7 +1391,6 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
-        {SecEstado()}
         {ErrSummary()}
         {FormActions()}
       </form>
