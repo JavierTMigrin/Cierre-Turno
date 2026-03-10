@@ -8,6 +8,20 @@ import { getLastRecord, saveRecord } from '../utils/storage.js'
 const isNum = (v) =>
   v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
 
+// Campos acumulativos sujetos a la regla del 10× (nombre → etiqueta legible)
+const RANGE_FIELDS = {
+  horometroPlanta:           'Horometro Planta',
+  pesometroAlimentacion:     'Pesometro Alimentacion',
+  horometroGenerador:        'Horometro Generador',
+  litrosPetroleo:            'Litros de Petroleo',
+  kilosFloculante:           'Kilos de Floculante',
+  pesometroProduccion:       'Pesometro Produccion',
+  pesometroProduccionCuarzo: 'Pesometro Prod. Cuarzo',
+  pesometroProduccionArenas: 'Pesometro Prod. Arenas',
+  horometroVSI:              'Horometro VSI',
+  litrosPetroleoVSI:         'Litros Petroleo VSI',
+}
+
 const getInitialState = (plant) => {
   const base = {
     fecha: new Date().toISOString().slice(0, 10),
@@ -218,6 +232,23 @@ export default function ShiftForm({ plant, onBack, onSaved }) {
     }
   }
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target
+    if (!RANGE_FIELDS[name]) return
+    if (!lastRecord) return
+    const prev = lastRecord[name]
+    if (prev === undefined || prev === '' || prev === null || !isNum(prev) || Number(prev) <= 0) return
+    if (!isNum(value)) return
+    const max = Number(prev) * 10
+    if (Number(value) > max) {
+      const label = RANGE_FIELDS[name]
+      setErrors(prev => ({
+        ...prev,
+        [name]: `Valor fuera de rango. El maximo permitido es ${max.toLocaleString('es-BO')} (10 veces el ultimo registro de ${label})`,
+      }))
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     const errs = validate(form, plant, lastRecord)
@@ -251,6 +282,7 @@ export default function ShiftForm({ plant, onBack, onSaved }) {
       type={type || 'text'}
       value={form[name] ?? ''}
       onChange={handleChange}
+      onBlur={RANGE_FIELDS[name] ? handleBlur : undefined}
       error={errors[name]}
       {...props}
     />
@@ -411,7 +443,12 @@ export default function ShiftForm({ plant, onBack, onSaved }) {
           <button type="button" className="btn-cancel" onClick={onBack}>
             Cancelar
           </button>
-          <button type="submit" className="btn-save" style={{ background: plantColor }}>
+          <button
+            type="submit"
+            className="btn-save"
+            style={{ background: plantColor }}
+            disabled={Object.keys(errors).length > 0}
+          >
             Guardar Registro
           </button>
         </div>
