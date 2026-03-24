@@ -725,14 +725,14 @@ const validate = (data, plant, lr) => {
       monoLim('consumoGas'+sfx,'el consumo de gas horno '+sfx,500);
       detPairs(sfx);
     });
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',300);
   } else if (plant === 'lavadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
     monoLim('horometroPlanta','el horometro de planta',8.5);
     monoLim('pesometroAlimentacion','el pesometro de alimentacion',800);
     numReq('kilosFloculante','los kilos de floculante');
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',600);
     monoLim('pesometroProduccion','el pesometro de produccion',650);
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
@@ -745,7 +745,7 @@ const validate = (data, plant, lr) => {
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     monoLim('consumoGas','el consumo de gas',1500);
-    monoLim('consumoElectrico','el consumo electrico',20);
+    monoLim('consumoElectrico','el consumo electrico',600);
     monoLim('horometroIman','el horometro iman',8.5);
     mono('pesometroIman','el pesometro iman');
     monoLim('horometroInicialFierrillo','el horometro inicial fierrillo',8.5);
@@ -1340,7 +1340,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
           </SecCard>
           <SecCard title="Consumo Electrico">
             <div className="form-grid">
-              {numLim('consumoElectricoKW','Consumo Electrico (kW)',20)}
+              {numLim('consumoElectricoKW','Consumo Electrico (kW)',300)}
             </div>
           </SecCard>
           {ErrSummary()}
@@ -1363,7 +1363,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {numLim('horometroPlanta','Horometro Planta',8.5)}
             {numLim('pesometroAlimentacion','Pesometro Alimentacion',800)}
             {num('kilosFloculante','Kilos de Floculante')}
-            {numLim('consumoElectricoKW','Consumo Electrico (kW)',20)}
+            {numLim('consumoElectricoKW','Consumo Electrico (kW)',600)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
@@ -1396,7 +1396,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
             {numLim('consumoGas','Consumo Gas',1500)}
-            {numLim('consumoElectrico','Consumo Electrico',20)}
+            {numLim('consumoElectrico','Consumo Electrico',600)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
