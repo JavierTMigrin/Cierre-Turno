@@ -8,7 +8,7 @@ import { getLastRecord, saveRecord } from '../utils/storage.js'
 const isNum = (v) =>
   v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
 
-// Campos acumulativos sujetos a la regla del 10× (nombre → etiqueta legible)
+// Campos acumulativos sujetos a la regla del 5× (nombre → etiqueta legible)
 const RANGE_FIELDS = {
   horometroPlanta:           'Horometro Planta',
   pesometroAlimentacion:     'Pesometro Alimentacion',
@@ -239,12 +239,12 @@ export default function ShiftForm({ plant, onBack, onSaved }) {
     const prev = lastRecord[name]
     if (prev === undefined || prev === '' || prev === null || !isNum(prev) || Number(prev) <= 0) return
     if (!isNum(value)) return
-    const max = Number(prev) * 10
+    const max = Number(prev) * 5
     if (Number(value) > max) {
       const label = RANGE_FIELDS[name]
       setErrors(prev => ({
         ...prev,
-        [name]: `Valor fuera de rango. El maximo permitido es ${max.toLocaleString('es-BO')} (10 veces el ultimo registro de ${label})`,
+        [name]: `Valor fuera de rango. El maximo permitido es ${max.toLocaleString('es-BO')} (5 veces el ultimo registro de ${label})`,
       }))
     }
   }

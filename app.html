@@ -652,6 +652,16 @@ const validate = (data, plant, lr) => {
     if (lr&&lr[field]!==undefined&&lr[field]!==''&&isNum(lr[field])&&Number(data[field])<Number(lr[field]))
       e[field]=`No puede ser menor al ultimo registro: ${lr[field]}`;
   };
+  const monoLim = (field, label, delta) => {
+    if (!isNum(data[field])) { e[field]=`Ingrese ${label}`; return; }
+    if (lr&&lr[field]!==undefined&&lr[field]!==''&&isNum(lr[field])) {
+      const prev = Number(lr[field]);
+      const curr = Number(data[field]);
+      if (curr < prev) { e[field]=`No puede ser menor al ultimo registro: ${lr[field]}`; return; }
+      const max = prev + delta;
+      if (curr > max) e[field]=`Valor fuera de rango. El maximo permitido es ${max}. Ultimo registro: ${prev}. Maximo permitido: ${max}`;
+    }
+  };
   const horasF = (field, label) => {
     if (!isNum(data[field])) e[field]=`Ingrese ${label}`;
     else if (Number(data[field])<0||Number(data[field])>12) e[field]='Debe estar entre 0 y 12';
@@ -670,12 +680,12 @@ const validate = (data, plant, lr) => {
   if (plant === 'arenas') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
-    mono('horometroPlanta','el horometro de planta');
-    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    monoLim('horometroPlanta','el horometro de planta',12.5);
+    monoLim('pesometroAlimentacion','el pesometro de alimentacion',1000);
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     numReq('kilosFloculante','los kilos de floculante');
-    mono('pesometroProduccion','el pesometro de produccion');
+    monoLim('pesometroProduccion','el pesometro de produccion',550);
     numReq('flujo','el flujo');
     numReq('numeroBolasM1','el numero de bolas M1');
     numReq('numeroBolasM2','el numero de bolas M2');
@@ -683,12 +693,12 @@ const validate = (data, plant, lr) => {
   } else if (plant === 'cuarzo') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
-    mono('horometroPlanta','el horometro de planta');
-    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    monoLim('horometroPlanta','el horometro de planta',12.5);
+    monoLim('pesometroAlimentacion','el pesometro de alimentacion',1250);
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     numReq('kilosFloculante','los kilos de floculante');
-    mono('horometroVSI','el horometro VSI');
+    monoLim('horometroVSI','el horometro VSI',12.5);
     numReq('litrosPetroleoVSI','los litros de petroleo VSI');
     numReq('odometroPetroleo','el odometro de petroleo');
     mono('pesometroProduccionCuarzo','el pesometro de produccion cuarzo');
@@ -701,47 +711,47 @@ const validate = (data, plant, lr) => {
   } else if (plant === 'lavadoP') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
-    mono('horometroPlanta','el horometro de planta');
-    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    monoLim('horometroPlanta','el horometro de planta',8.5);
+    monoLim('pesometroAlimentacion','el pesometro de alimentacion',550);
     numReq('bolsasFloculante','las bolsas de floculante');
-    mono('consumoElectricoKW','el consumo electrico (kW)');
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
     detPairs();
   } else if (plant === 'secadoP') {
     ['A','B'].forEach(sfx => {
       horasF('horasProgramadas'+sfx,'las horas programadas horno '+sfx);
       horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
-      mono('horometroPlanta'+sfx,'el horometro de planta horno '+sfx);
-      mono('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx);
-      mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
+      monoLim('horometroPlanta'+sfx,'el horometro de planta horno '+sfx,8.5);
+      monoLim('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx,160);
+      monoLim('consumoGas'+sfx,'el consumo de gas horno '+sfx,500);
       detPairs(sfx);
     });
-    mono('consumoElectricoKW','el consumo electrico (kW)');
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
   } else if (plant === 'lavadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
-    mono('horometroPlanta','el horometro de planta');
-    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    monoLim('horometroPlanta','el horometro de planta',8.5);
+    monoLim('pesometroAlimentacion','el pesometro de alimentacion',800);
     numReq('kilosFloculante','los kilos de floculante');
-    mono('consumoElectricoKW','el consumo electrico (kW)');
-    mono('pesometroProduccion','el pesometro de produccion');
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
+    monoLim('pesometroProduccion','el pesometro de produccion',650);
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   } else if (plant === 'secadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
-    mono('horometroPlanta','el horometro de planta');
-    mono('pesometroAlimentacion','el pesometro de alimentacion');
+    monoLim('horometroPlanta','el horometro de planta',8.5);
+    monoLim('pesometroAlimentacion','el pesometro de alimentacion',240);
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
-    mono('consumoGas','el consumo de gas');
-    mono('consumoElectrico','el consumo electrico');
-    mono('horometroIman','el horometro iman');
+    monoLim('consumoGas','el consumo de gas',1500);
+    monoLim('consumoElectrico','el consumo electrico',20);
+    monoLim('horometroIman','el horometro iman',8.5);
     mono('pesometroIman','el pesometro iman');
-    numReq('horometroInicialFierrillo','el horometro inicial fierrillo');
-    numReq('horometroFinalFierrillo','el horometro final fierrillo');
-    numReq('pesometroInicialFierrillo','el pesometro inicial fierrillo');
-    numReq('pesometroFinalFierrillo','el pesometro final fierrillo');
+    monoLim('horometroInicialFierrillo','el horometro inicial fierrillo',8.5);
+    monoLim('horometroFinalFierrillo','el horometro final fierrillo',8.5);
+    monoLim('pesometroInicialFierrillo','el pesometro inicial fierrillo',240);
+    monoLim('pesometroFinalFierrillo','el pesometro final fierrillo',240);
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   }
@@ -1119,6 +1129,21 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         setErrors(prev => ({...prev, [name]: 'Debe estar entre 0 y 12'}));
     }});
 
+  // Campo acumulativo con límite delta: valida monotonía + máximo en onBlur
+  const limBlur = (name, delta) => e => {
+    const val = e.target.value;
+    if (!isNum(val)) return;
+    const prev = lastRec ? lastRec[name] : undefined;
+    if (prev===undefined||prev===''||prev===null||!isNum(prev)) return;
+    const prevNum = Number(prev);
+    const currNum = Number(val);
+    if (currNum < prevNum) { setErrors(p=>({...p,[name]:`No puede ser menor al ultimo registro: ${prev}`})); return; }
+    const max = prevNum + delta;
+    if (currNum > max) setErrors(p=>({...p,[name]:`Valor fuera de rango. El maximo permitido es ${max}. Ultimo registro: ${prev}. Maximo permitido: ${max}`}));
+  };
+  const numLim = (name, label, delta) =>
+    f(name, label, lastVal(name), 'number', {onBlur: limBlur(name, delta)});
+
   // Banner de horas de detención (tiempo real)
   const calcDetBanner = (sfx='') => {
     const hp   = parseFloat(form['horasProgramadas'+sfx]) || 0;
@@ -1191,8 +1216,8 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
-            {num('horometroPlanta','Horometro Planta',true)}
-            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {numLim('horometroPlanta','Horometro Planta',12.5)}
+            {numLim('pesometroAlimentacion','Pesometro Alimentacion',1000)}
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
             {num('kilosFloculante','Kilos de Floculante')}
@@ -1201,7 +1226,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title="Produccion">
           <div className="form-grid">
-            {num('pesometroProduccion','Pesometro Produccion',true)}
+            {numLim('pesometroProduccion','Pesometro Produccion',550)}
             {num('flujo','Flujo (Ton/h)')}
             {f('numeroBolasM1','N\u00b0 de Bolas M1',null,'number')}
             {f('numeroBolasM2','N\u00b0 de Bolas M2',null,'number')}
@@ -1225,12 +1250,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
-            {num('horometroPlanta','Horometro Planta',true)}
-            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {numLim('horometroPlanta','Horometro Planta',12.5)}
+            {numLim('pesometroAlimentacion','Pesometro Alimentacion',1250)}
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
             {num('kilosFloculante','Kilos de Floculante')}
-            {num('horometroVSI','Horometro VSI',true)}
+            {numLim('horometroVSI','Horometro VSI',12.5)}
             {num('litrosPetroleoVSI','Litros Petroleo VSI')}
             {num('odometroPetroleo','Odometro Petroleo')}
             {f('vdfHz','VDF (Hz)',null,'number',{required:false})}
@@ -1260,10 +1285,10 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
-            {num('horometroPlanta','Horometro Planta',true)}
-            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {numLim('horometroPlanta','Horometro Planta',8.5)}
+            {numLim('pesometroAlimentacion','Pesometro Alimentacion',550)}
             {num('bolsasFloculante','Bolsas de Floculante')}
-            {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
+            {numLim('consumoElectricoKW','Consumo Electrico (kW)',20)}
           </div>
         </SecCard>
         {calcDetBanner()}
@@ -1287,13 +1312,13 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title={`${label} — Medidores`}>
           <div className="form-grid">
-            {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number')}
-            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number')}
+            {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number',{onBlur:limBlur('horometroPlanta'+sfx,8.5)})}
+            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number',{onBlur:limBlur('pesometroAlimentacion'+sfx,160)})}
           </div>
         </SecCard>
         <SecCard title={`${label} — Consumo Gas`}>
           <div className="form-grid">
-            {f('consumoGas'+sfx,'Consumo Gas',lastVal('consumoGas'+sfx),'number')}
+            {f('consumoGas'+sfx,'Consumo Gas',lastVal('consumoGas'+sfx),'number',{onBlur:limBlur('consumoGas'+sfx,500)})}
           </div>
         </SecCard>
         {calcDetBanner(sfx)}
@@ -1315,7 +1340,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
           </SecCard>
           <SecCard title="Consumo Electrico">
             <div className="form-grid">
-              {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
+              {numLim('consumoElectricoKW','Consumo Electrico (kW)',20)}
             </div>
           </SecCard>
           {ErrSummary()}
@@ -1335,16 +1360,16 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
-            {num('horometroPlanta','Horometro Planta',true)}
-            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {numLim('horometroPlanta','Horometro Planta',8.5)}
+            {numLim('pesometroAlimentacion','Pesometro Alimentacion',800)}
             {num('kilosFloculante','Kilos de Floculante')}
-            {num('consumoElectricoKW','Consumo Electrico (kW)',true)}
+            {numLim('consumoElectricoKW','Consumo Electrico (kW)',20)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Produccion">
           <div className="form-grid">
-            {num('pesometroProduccion','Pesometro Produccion',true)}
+            {numLim('pesometroProduccion','Pesometro Produccion',650)}
             {num('flujo','Flujo (Ton/h)')}
           </div>
         </SecCard>
@@ -1366,27 +1391,27 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         {SecHoras()}
         <SecCard title="Medidores Planta">
           <div className="form-grid">
-            {num('horometroPlanta','Horometro Planta',true)}
-            {num('pesometroAlimentacion','Pesometro Alimentacion',true)}
+            {numLim('horometroPlanta','Horometro Planta',8.5)}
+            {numLim('pesometroAlimentacion','Pesometro Alimentacion',240)}
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
-            {num('consumoGas','Consumo Gas',true)}
-            {num('consumoElectrico','Consumo Electrico',true)}
+            {numLim('consumoGas','Consumo Gas',1500)}
+            {numLim('consumoElectrico','Consumo Electrico',20)}
             {f('sensorFalla','Sensor de Falla',null,'number',{required:false})}
           </div>
         </SecCard>
         <SecCard title="Iman">
           <div className="form-grid">
-            {num('horometroIman','Horometro Iman',true)}
+            {numLim('horometroIman','Horometro Iman',8.5)}
             {num('pesometroIman','Pesometro Iman',true)}
           </div>
         </SecCard>
         <SecCard title="Fierrillo">
           <div className="form-grid">
-            {num('horometroInicialFierrillo','Horometro Inicial')}
-            {num('horometroFinalFierrillo','Horometro Final')}
-            {num('pesometroInicialFierrillo','Pesometro Inicial')}
-            {num('pesometroFinalFierrillo','Pesometro Final')}
+            {numLim('horometroInicialFierrillo','Horometro Inicial',8.5)}
+            {numLim('horometroFinalFierrillo','Horometro Final',8.5)}
+            {numLim('pesometroInicialFierrillo','Pesometro Inicial',240)}
+            {numLim('pesometroFinalFierrillo','Pesometro Final',240)}
           </div>
         </SecCard>
         {calcDetBanner()}
