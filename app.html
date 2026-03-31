@@ -722,7 +722,7 @@ const validate = (data, plant, lr) => {
       horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
       monoLim('horometroPlanta'+sfx,'el horometro de planta horno '+sfx,8.5);
       monoLim('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx,160);
-      monoLim('consumoGas'+sfx,'el consumo de gas horno '+sfx,500);
+      mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
     monoLim('consumoElectricoKW','el consumo electrico (kW)',300);
@@ -1141,6 +1141,14 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
     const max = prevNum + delta;
     if (currNum > max) setErrors(p=>({...p,[name]:`Valor fuera de rango. El maximo permitido es ${max}. Ultimo registro: ${prev}. Maximo permitido: ${max}`}));
   };
+  // Campo acumulativo solo monotonía (sin límite superior) en onBlur
+  const monoBlur = name => e => {
+    const val = e.target.value;
+    if (!isNum(val)) return;
+    const prev = lastRec ? lastRec[name] : undefined;
+    if (prev===undefined||prev===''||prev===null||!isNum(prev)) return;
+    if (Number(val) < Number(prev)) setErrors(p=>({...p,[name]:`No puede ser menor al ultimo registro: ${prev}`}));
+  };
   const numLim = (name, label, delta) =>
     f(name, label, lastVal(name), 'number', {onBlur: limBlur(name, delta)});
 
@@ -1318,7 +1326,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title={`${label} — Consumo Gas`}>
           <div className="form-grid">
-            {f('consumoGas'+sfx,'Consumo Gas',lastVal('consumoGas'+sfx),'number',{onBlur:limBlur('consumoGas'+sfx,500)})}
+            {f('consumoGas'+sfx,'Consumo Gas',lastVal('consumoGas'+sfx),'number',{onBlur:monoBlur('consumoGas'+sfx)})}
           </div>
         </SecCard>
         {calcDetBanner(sfx)}
