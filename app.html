@@ -725,7 +725,7 @@ const validate = (data, plant, lr) => {
       mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',400);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',1000);
   } else if (plant === 'lavadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
