@@ -732,7 +732,7 @@ const validate = (data, plant, lr) => {
     monoLim('horometroPlanta','el horometro de planta',8.5);
     monoLim('pesometroAlimentacion','el pesometro de alimentacion',800);
     numReq('kilosFloculante','los kilos de floculante');
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',700);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',2500);
     monoLim('pesometroProduccion','el pesometro de produccion',650);
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
