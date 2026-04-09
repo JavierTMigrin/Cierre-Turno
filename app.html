@@ -714,7 +714,7 @@ const validate = (data, plant, lr) => {
     monoLim('horometroPlanta','el horometro de planta',8.5);
     monoLim('pesometroAlimentacion','el pesometro de alimentacion',550);
     numReq('bolsasFloculante','las bolsas de floculante');
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',20);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',400);
     detPairs();
   } else if (plant === 'secadoP') {
     ['A','B'].forEach(sfx => {
@@ -725,14 +725,14 @@ const validate = (data, plant, lr) => {
       mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',300);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',400);
   } else if (plant === 'lavadoT') {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
     monoLim('horometroPlanta','el horometro de planta',8.5);
     monoLim('pesometroAlimentacion','el pesometro de alimentacion',800);
     numReq('kilosFloculante','los kilos de floculante');
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',600);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',700);
     monoLim('pesometroProduccion','el pesometro de produccion',650);
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
@@ -745,7 +745,7 @@ const validate = (data, plant, lr) => {
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     monoLim('consumoGas','el consumo de gas',1500);
-    monoLim('consumoElectrico','el consumo electrico',600);
+    monoLim('consumoElectrico','el consumo electrico',700);
     monoLim('horometroIman','el horometro iman',8.5);
     mono('pesometroIman','el pesometro iman');
     monoLim('horometroInicialFierrillo','el horometro inicial fierrillo',8.5);
