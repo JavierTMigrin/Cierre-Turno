@@ -732,7 +732,7 @@ const validate = (data, plant, lr) => {
     monoLim('horometroPlanta','el horometro de planta',8.5);
     monoLim('pesometroAlimentacion','el pesometro de alimentacion',800);
     numReq('kilosFloculante','los kilos de floculante');
-    monoLim('consumoElectricoKW','el consumo electrico (kW)',2500);
+    monoLim('consumoElectricoKW','el consumo electrico (kW)',3000);
     monoLim('pesometroProduccion','el pesometro de produccion',650);
     numReq('flujo','el flujo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
@@ -745,13 +745,13 @@ const validate = (data, plant, lr) => {
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     monoLim('consumoGas','el consumo de gas',1500);
-    monoLim('consumoElectrico','el consumo electrico',700);
+    monoLim('consumoElectrico','el consumo electrico',1000);
     monoLim('horometroIman','el horometro iman',8.5);
     mono('pesometroIman','el pesometro iman');
     monoLim('horometroInicialFierrillo','el horometro inicial fierrillo',8.5);
     monoLim('horometroFinalFierrillo','el horometro final fierrillo',8.5);
-    monoLim('pesometroInicialFierrillo','el pesometro inicial fierrillo',240);
-    monoLim('pesometroFinalFierrillo','el pesometro final fierrillo',240);
+    monoLim('pesometroInicialFierrillo','el pesometro inicial fierrillo',500);
+    monoLim('pesometroFinalFierrillo','el pesometro final fierrillo',500);
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   }
