@@ -748,10 +748,10 @@ const validate = (data, plant, lr) => {
     mono('consumoElectrico','el consumo electrico');
     monoLim('horometroIman','el horometro iman',8.5);
     mono('pesometroIman','el pesometro iman');
-    monoLim('horometroInicialFierrillo','el horometro inicial fierrillo',8.5);
-    monoLim('horometroFinalFierrillo','el horometro final fierrillo',8.5);
-    monoLim('pesometroInicialFierrillo','el pesometro inicial fierrillo',500);
-    monoLim('pesometroFinalFierrillo','el pesometro final fierrillo',500);
+    mono('horometroInicialFierrillo','el horometro inicial fierrillo');
+    mono('horometroFinalFierrillo','el horometro final fierrillo');
+    mono('pesometroInicialFierrillo','el pesometro inicial fierrillo');
+    mono('pesometroFinalFierrillo','el pesometro final fierrillo');
     if (data.sensorFalla!==''&&data.sensorFalla!=null&&!isNum(data.sensorFalla)) e.sensorFalla='Debe ser un numero valido';
     detPairs();
   }
@@ -1416,10 +1416,10 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title="Fierrillo">
           <div className="form-grid">
-            {numLim('horometroInicialFierrillo','Horometro Inicial',8.5)}
-            {numLim('horometroFinalFierrillo','Horometro Final',8.5)}
-            {numLim('pesometroInicialFierrillo','Pesometro Inicial',240)}
-            {numLim('pesometroFinalFierrillo','Pesometro Final',240)}
+            {f('horometroInicialFierrillo','Horometro Inicial',lastVal('horometroInicialFierrillo'),'number',{onBlur:monoBlur('horometroInicialFierrillo')})}
+            {f('horometroFinalFierrillo','Horometro Final',lastVal('horometroFinalFierrillo'),'number',{onBlur:monoBlur('horometroFinalFierrillo')})}
+            {f('pesometroInicialFierrillo','Pesometro Inicial',lastVal('pesometroInicialFierrillo'),'number',{onBlur:monoBlur('pesometroInicialFierrillo')})}
+            {f('pesometroFinalFierrillo','Pesometro Final',lastVal('pesometroFinalFierrillo'),'number',{onBlur:monoBlur('pesometroFinalFierrillo')})}
           </div>
         </SecCard>
         {calcDetBanner()}
