@@ -440,6 +440,7 @@ const FIELD_LABELS = {
   horometroInicialFierrillo:'Horometro Inicial Fierrillo', horometroFinalFierrillo:'Horometro Final Fierrillo',
   pesometroInicialFierrillo:'Pesometro Inicial Fierrillo', pesometroFinalFierrillo:'Pesometro Final Fierrillo',
   estado:'Estado', creadoPor:'Creado Por', vdfHz:'VDF (Hz)',
+  detencionExterna:'Detencion Externa', tiempoDetencionExterna:'Tiempo Det. Externa (hrs)',
 };
 
 // Secciones para pantalla de revisión (por planta)
@@ -448,24 +449,25 @@ const getReviewSections = plant => {
   const horas = { title:'Horas', fields:['horasProgramadas','horasMantenimientoProgramado'] };
   const detOp  = { title:'Detenciones Operacionales', fields:['detencionOperacion1','tiempoDetencionOperacion1','detencionOperacion2','tiempoDetencionOperacion2'] };
   const detMnt = { title:'Detenciones de Mantencion',  fields:['detencionMantencion1','tiempoDetencionMantencion1','detencionMantencion2','tiempoDetencionMantencion2'] };
+  const detExt = { title:'Detenciones Externas', fields:['detencionExterna','tiempoDetencionExterna'] };
   const end   = [{ title:'Estado del Registro', fields:['estado','creadoPor'] }];
 
   if (plant === 'arenas') return [
     ...base, horas,
     { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','kilosFloculante'] },
     { title:'Produccion',       fields:['pesometroProduccion','flujo','numeroBolasM1','numeroBolasM2'] },
-    detOp, detMnt, ...end,
+    detOp, detMnt, detExt, ...end,
   ];
   if (plant === 'cuarzo') return [
     ...base, horas,
     { title:'Medidores Planta',  fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','kilosFloculante','horometroVSI','litrosPetroleoVSI','odometroPetroleo'] },
     { title:'Produccion Cuarzo', fields:['pesometroProduccionCuarzo','pesometroProduccionCompacta'] },
-    detOp, detMnt, ...end,
+    detOp, detMnt, detExt, ...end,
   ];
   if (plant === 'lavadoP') return [
     ...base, horas,
     { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','bolsasFloculante','consumoElectricoKW'] },
-    detOp, detMnt, ...end,
+    detOp, detMnt, detExt, ...end,
   ];
   if (plant === 'secadoP') return [
     { title:'Informacion General',  fields:['fecha','turno','sop'] },
@@ -481,13 +483,13 @@ const getReviewSections = plant => {
     { title:'Horno B — Det. Mant.', fields:['detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B'] },
     { title:'Silos',             fields:['silo1','silo2','silo3','silo4','silo5','silo6'] },
     { title:'Consumo Electrico', fields:['consumoElectricoKW'] },
-    ...end,
+    detExt, ...end,
   ];
   if (plant === 'lavadoT') return [
     ...base, horas,
     { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','kilosFloculante','consumoElectricoKW','sensorFalla'] },
     { title:'Produccion',       fields:['pesometroProduccion','flujo'] },
-    detOp, detMnt, ...end,
+    detOp, detMnt, detExt, ...end,
   ];
   if (plant === 'secadoT') return [
     { title:'Informacion General', fields:['fecha','turno','sop'] },
@@ -495,7 +497,7 @@ const getReviewSections = plant => {
     { title:'Medidores Planta', fields:['horometroPlanta','pesometroAlimentacion','litrosPetroleo','horometroGenerador','consumoGas','consumoElectrico','sensorFalla'] },
     { title:'Iman',      fields:['horometroIman','pesometroIman'] },
     { title:'Fierrillo', fields:['horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo'] },
-    detOp, detMnt, ...end,
+    detOp, detMnt, detExt, ...end,
   ];
   return [...base, horas, detOp, detMnt, ...end];
 };
@@ -523,6 +525,7 @@ const EXCEL_COLS = [
   'detencionMantencion1B','tiempoDetencionMantencion1B','detencionMantencion2B','tiempoDetencionMantencion2B',
   'silo1','silo2','silo3','silo4','silo5','silo6',
   'sensorFalla',
+  'detencionExterna','tiempoDetencionExterna',
   'horometroIman','pesometroIman',
   'horometroInicialFierrillo','horometroFinalFierrillo','pesometroInicialFierrillo','pesometroFinalFierrillo',
   'estado','creadoPor','fechaRegistro','fechaHoraEnvio',
@@ -598,6 +601,7 @@ const getInitialState = plant => {
     detencionOperacion2:'', tiempoDetencionOperacion2:'',
     detencionMantencion1:'', tiempoDetencionMantencion1:'',
     detencionMantencion2:'', tiempoDetencionMantencion2:'',
+    detencionExterna:'', tiempoDetencionExterna:'',
   };
   const horas = { horasProgramadas:'', horasMantenimientoProgramado:'' };
 
@@ -627,6 +631,7 @@ const getInitialState = plant => {
     detencionMantencion2B:'', tiempoDetencionMantencion2B:'',
     silo1:'', silo2:'', silo3:'', silo4:'', silo5:'', silo6:'',
     consumoElectricoKW:'',
+    detencionExterna:'', tiempoDetencionExterna:'',
   };
   if (plant === 'lavadoT') return { ...base, tipoMaterial:'', ...horas,
     horometroPlanta:'', pesometroAlimentacion:'', kilosFloculante:'', consumoElectricoKW:'', sensorFalla:'',
@@ -1242,6 +1247,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecCard title="Detenciones Externas">
+          <div className="form-grid">
+            {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+            {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+          </div>
+        </SecCard>
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1277,6 +1288,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecCard title="Detenciones Externas">
+          <div className="form-grid">
+            {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+            {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+          </div>
+        </SecCard>
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1301,6 +1318,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecCard title="Detenciones Externas">
+          <div className="form-grid">
+            {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+            {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+          </div>
+        </SecCard>
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1351,6 +1374,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
               {f('consumoElectricoKW','Consumo Electrico (kW)',lastVal('consumoElectricoKW'),'number',{onBlur:monoBlur('consumoElectricoKW')})}
             </div>
           </SecCard>
+          <SecCard title="Detenciones Externas">
+            <div className="form-grid">
+              {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+              {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+            </div>
+          </SecCard>
           {ErrSummary()}
           {FormActions()}
         </form>
@@ -1383,6 +1412,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecCard title="Detenciones Externas">
+          <div className="form-grid">
+            {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+            {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+          </div>
+        </SecCard>
         {ErrSummary()}
         {FormActions()}
       </form>
@@ -1424,6 +1459,12 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         {calcDetBanner()}
         <DetPairs form={form} errors={errors} onChange={handleChange}/>
+        <SecCard title="Detenciones Externas">
+          <div className="form-grid">
+            {f('detencionExterna','Motivo',null,'text',{required:false,placeholder:'Describa la detencion externa...'})}
+            {f('tiempoDetencionExterna','Horas',null,'number',{required:false})}
+          </div>
+        </SecCard>
         {ErrSummary()}
         {FormActions()}
       </form>
