@@ -726,7 +726,8 @@ const validate = (data, plant, lr) => {
       horasF('horasProgramadas'+sfx,'las horas programadas horno '+sfx);
       horasF('horasMantenimientoProgramado'+sfx,'las horas de mantenimiento horno '+sfx);
       monoLim('horometroPlanta'+sfx,'el horometro de planta horno '+sfx,8.5);
-      monoLim('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx,160);
+      if (sfx==='B') numReq('pesometroAlimentacionB','el pesometro de alimentacion horno B');
+      else monoLim('pesometroAlimentacion'+sfx,'el pesometro de alimentacion horno '+sfx,160);
       mono('consumoGas'+sfx,'el consumo de gas horno '+sfx);
       detPairs(sfx);
     });
@@ -1344,7 +1345,9 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         <SecCard title={`${label} — Medidores`}>
           <div className="form-grid">
             {f('horometroPlanta'+sfx,'Horometro Planta',lastVal('horometroPlanta'+sfx),'number',{onBlur:limBlur('horometroPlanta'+sfx,8.5)})}
-            {f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number',{onBlur:limBlur('pesometroAlimentacion'+sfx,160)})}
+            {sfx==='B'
+              ? f('pesometroAlimentacionB','Pesometro Alimentacion',null,'number')
+              : f('pesometroAlimentacion'+sfx,'Pesometro Alimentacion',lastVal('pesometroAlimentacion'+sfx),'number',{onBlur:limBlur('pesometroAlimentacion'+sfx,160)})}
           </div>
         </SecCard>
         <SecCard title={`${label} — Consumo Gas`}>
