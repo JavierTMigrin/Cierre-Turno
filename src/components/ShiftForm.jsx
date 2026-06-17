@@ -11,11 +11,9 @@ const isNum = (v) =>
 // Campos acumulativos sujetos a la regla del 5× (nombre → etiqueta legible)
 const RANGE_FIELDS = {
   horometroPlanta:           'Horometro Planta',
-  pesometroAlimentacion:     'Pesometro Alimentacion',
   horometroGenerador:        'Horometro Generador',
   litrosPetroleo:            'Litros de Petroleo',
   kilosFloculante:           'Kilos de Floculante',
-  pesometroProduccion:       'Pesometro Produccion',
   pesometroProduccionCuarzo: 'Pesometro Prod. Cuarzo',
   pesometroProduccionArenas: 'Pesometro Prod. Arenas',
   horometroVSI:              'Horometro VSI',
