@@ -686,11 +686,11 @@ const validate = (data, plant, lr) => {
     horasF('horasProgramadas','las horas programadas');
     horasF('horasMantenimientoProgramado','las horas de mantenimiento');
     monoLim('horometroPlanta','el horometro de planta',12.5);
-    monoLim('pesometroAlimentacion','el pesometro de alimentacion',1000);
+    mono('pesometroAlimentacion','el pesometro de alimentacion');
     numReq('litrosPetroleo','los litros de petroleo');
     mono('horometroGenerador','el horometro de generador');
     numReq('kilosFloculante','los kilos de floculante');
-    monoLim('pesometroProduccion','el pesometro de produccion',550);
+    mono('pesometroProduccion','el pesometro de produccion');
     numReq('flujo','el flujo');
     numReq('numeroBolasM1','el numero de bolas M1');
     numReq('numeroBolasM2','el numero de bolas M2');
@@ -1230,7 +1230,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         <SecCard title="Medidores Planta">
           <div className="form-grid">
             {numLim('horometroPlanta','Horometro Planta',12.5)}
-            {numLim('pesometroAlimentacion','Pesometro Alimentacion',1000)}
+            {num('pesometroAlimentacion','Pesometro Alimentacion',true,{onBlur:monoBlur('pesometroAlimentacion')})}
             {num('litrosPetroleo','Litros de Petroleo')}
             {num('horometroGenerador','Horometro Generador',true)}
             {num('kilosFloculante','Kilos de Floculante')}
@@ -1239,7 +1239,7 @@ function ShiftForm({ plant, onBack, onReview, initialData }) {
         </SecCard>
         <SecCard title="Produccion">
           <div className="form-grid">
-            {numLim('pesometroProduccion','Pesometro Produccion',550)}
+            {num('pesometroProduccion','Pesometro Produccion',true,{onBlur:monoBlur('pesometroProduccion')})}
             {num('flujo','Flujo (Ton/h)')}
             {f('numeroBolasM1','N\u00b0 de Bolas M1',null,'number')}
             {f('numeroBolasM2','N\u00b0 de Bolas M2',null,'number')}
